@@ -1,0 +1,768 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block title %}FPO Admin - FPO Details and Information{% endblock %}
+
+{% block meta_description %}FPO Details and Information{% endblock %}
+
+{% block page_title_block %}
+{#<h1 class="text-2xl sm:text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">#}
+{#    {{ fpo.name }}#}
+{#</h1>#}
+{% endblock %}
+
+{% block page_subtitle_block %}
+<h2 class="mt-2 text-2xl text-muted-foreground">{% trans "FPO Details and Information" %}</h2>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+    <a href="{% url 'fpo:fpos_list' %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-arrow-left w-4 h-4 mr-2"></i>
+        {% trans "Back to FPOs" %}
+    </a>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<div class="space-y-6">
+    <!-- FPO Header Card -->
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+            <!-- Logo and Basic Info -->
+            <div class="flex items-center gap-6">
+                <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center ring-4 ring-primary/10">
+                    {% if fpo.logo %}
+                        <img src="{{ fpo.logo.url }}" alt="{{ fpo.name }}" class="w-16 h-16 rounded-lg object-cover">
+                    {% else %}
+                        <i class="fa fa-leaf text-3xl text-primary"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-card-foreground mb-2">{{ fpo.name }}</h2>
+                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span class="flex items-center gap-1">
+                            <i class="fa fa-envelope"></i>
+                            {{ fpo.email }}
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <i class="fa fa-phone"></i>
+                            {{ fpo.phone }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Badge -->
+            <div class="lg:ml-auto">
+                {% if fpo.verification_status == "approved" %}
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span class="text-sm font-medium text-green-700 ">{% trans "Verified" %}</span>
+                    </div>
+                {% elif fpo.verification_status == "rejected" %}
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                        <span class="text-sm font-medium text-red-700">{% trans "Rejected" %}</span>
+                    </div>
+                {% else %}
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                        <span class="text-sm font-medium text-amber-700">{% trans "Pending verification" %}</span>
+                    </div>
+                {% endif %}
+                {% if fpo.verification_notes %}
+                    <p class="mt-2 max-w-sm text-sm text-muted-foreground">{{ fpo.verification_notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Contact Information -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Contact Details -->
+            <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+                <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Contact Information" %}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Primary Phone" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.phone }}</p>
+                    </div>
+                    {% if fpo.alternate_phone %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Alternate Phone" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.alternate_phone }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Email Address" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.email }}</p>
+                    </div>
+                    {% if fpo.contact_person_name %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Contact Person" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.contact_person_name }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+                <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Address Information" %}</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Full Address" %}</label>
+                        <p class="text-sm text-card-foreground leading-relaxed">{{ fpo.full_address }}</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="text-sm font-medium text-muted-foreground">{% trans "City" %}</label>
+                            <p class="text-sm text-card-foreground">{{ fpo.city }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-muted-foreground">{% trans "District" %}</label>
+                            <p class="text-sm text-card-foreground">{{ fpo.district }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-muted-foreground">{% trans "State" %}</label>
+                            <p class="text-sm text-card-foreground">{{ fpo.state }}</p>
+                        </div>
+                    </div>
+                    <!-- TODO: DO IT LATER -->
+                    <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm font-medium text-muted-foreground">{% trans "Pincode" %}</label>
+                            <p class="text-sm text-card-foreground">{{ fpo.pincode }}</p>
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+
+            <!-- Store Link -->
+            <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-card-foreground">{% trans "Store Link" %}</h3>
+                </div>
+                <form method="post" action="{% url 'fpo:update_store_link' fpo.pk %}" class="flex items-end gap-3">
+                    {% csrf_token %}
+                    <div class="flex-1">
+                        <label class="text-sm font-medium text-muted-foreground mb-1 block">{% trans "URL" %}</label>
+                        <input type="url" name="store_link" value="{{ fpo.store_link|default:'' }}" 
+                               placeholder="https://example.com/store" 
+                               class="form-control w-full">
+                    </div>
+                    <button type="submit" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors">
+                        <i class="fa fa-save mr-2"></i>
+                        {% trans "Save" %}
+                    </button>
+                </form>
+                {% if fpo.store_link %}
+                <div class="mt-3">
+                    <a href="{{ fpo.store_link }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary hover:underline flex items-center gap-1">
+                        <i class="fa fa-external-link"></i>
+                        {{ fpo.store_link }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar Information -->
+        <div class="space-y-6">
+            <!-- Registration Details -->
+            <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+                <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Registration Details" %}</h3>
+                <div class="space-y-4">
+                    {% if fpo.registration_number %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Registration Number" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.registration_number }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Established Date" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.established_date|date:"M d, Y"|default:"-" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Created On" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.created_at|date:"M d, Y" }}</p>
+                    </div>
+                    {% if fpo.created_by %}
+                    <div>
+                        <label class="text-sm font-medium text-muted-foreground">{% trans "Created By" %}</label>
+                        <p class="text-sm text-card-foreground">{{ fpo.created_by.get_full_name|default:fpo.created_by.username }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+                <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Actions" %}</h3>
+                <div class="space-y-3">
+                    {% if yearly_submissions %}
+                        <button type="button"
+                                onclick="openReportViewer('{% url 'fpo:submission_report_view' fpo.pk yearly_submissions.0.pk %}', '{% url 'fpo:submission_pdf_report' fpo.pk yearly_submissions.0.pk %}')"
+                                class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-green-foreground bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 border border-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 hover:scale-105 active:scale-95">
+                            <i class="fa fa-eye w-4 h-4 mr-2"></i>
+                            {% trans "View Report" %}
+                        </button>
+                    {% else %}
+                        <button disabled class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-muted border border-border cursor-not-allowed opacity-50">
+                            <i class="fa fa-eye w-4 h-4 mr-2"></i>
+                            {% trans "View Report" %}
+                        </button>
+                    {% endif %}
+
+                    <a href="{% url 'fpo:export_fpo_details' fpo.pk %}" data-turbo="false" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+                        <i class="fa fa-download w-4 h-4 mr-2"></i>
+                        {% trans "Export" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Members Section -->
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-card-foreground">{% trans "Access Control" %}</h3>
+            <button type="button" onclick="toggleMemberModal()" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                <i class="fa fa-plus mr-2"></i>
+                {% trans "Add Admin" %}
+            </button>
+        </div>
+        
+        {% if members %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Member" %}</th>
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Role" %}</th>
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Joined" %}</th>
+                            <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in members %}
+                        <tr class="border-b border-border/50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <i class="fa fa-user text-primary text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-card-foreground">
+                                            {{ member.user.get_full_name|default:member.user.username }}
+                                        </p>
+                                        <p class="text-xs text-muted-foreground">{{ member.user.email }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if member.role == 'admin' %}bg-blue-100 text-blue-800 {% else %}bg-gray-100 text-gray-800 {% endif %}">
+                                    {% if member.role == 'admin' %}
+                                        <i class="fa fa-crown mr-1"></i>
+                                    {% else %}
+                                        <i class="fa fa-eye mr-1"></i>
+                                    {% endif %}
+                                    {{ member.get_role_display }}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-muted-foreground">
+                                {{ member.joined_at|date:"M d, Y" }}
+                            </td>
+                            <td class="py-4 px-4 text-right">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <form method="post" action="{% url 'fpo:update_member_role' fpo.pk member.pk %}" class="inline">
+                                        {% csrf_token %}
+                                        <select name="role" onchange="this.form.submit()" class="text-xs px-2 py-1 rounded border border-border bg-background">
+                                            <option value="viewer" {% if member.role == 'viewer' %}selected{% endif %}>{% trans "Viewer" %}</option>
+                                            <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>{% trans "Admin" %}</option>
+                                        </select>
+                                    </form>
+                                    <form method="post" action="{% url 'fpo:remove_member' fpo.pk member.pk %}" class="inline" onsubmit="return confirm('Are you sure you want to remove this member?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-destructive hover:text-destructive/80 p-1">
+                                            <i class="fa fa-trash text-xs"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-8">
+                <div class="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-users text-2xl text-muted-foreground"></i>
+                </div>
+                <p class="text-muted-foreground">{% trans "No members added yet" %}</p>
+                <p class="text-sm text-muted-foreground mt-1">{% trans "Click 'Add Member' to get started" %}</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Yearly Submissions Section -->
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <h3 class="text-lg font-semibold text-card-foreground">{% trans "Yearly Submissions" %}</h3>
+                <span class="text-sm text-muted-foreground">{{ yearly_submissions.count }} {% trans "submissions" %}</span>
+            </div>
+        </div>
+        
+        {% if yearly_submissions %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Financial Year" %}</th>
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Status" %}</th>
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Score" %}</th>
+                            <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Submitted At" %}</th>
+                            <th class="text-right py-3 px-4 text-sm font-medium text-muted-foreground">{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in yearly_submissions %}
+                        <tr class="border-b border-border/50 hover:bg-accent/50 transition-colors">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fa fa-calendar text-primary"></i>
+                                    <span class="text-sm font-medium text-card-foreground">{{ submission.financial_year }}</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if submission.status == 'approved' %}bg-green-100 text-green-800
+                                    {% elif submission.status == 'submitted' %}bg-blue-100 text-blue-800
+                                    {% elif submission.status == 'under_review' %}bg-yellow-100 text-yellow-800
+                                    {% elif submission.status == 'rejected' %}bg-red-100 text-red-800
+                                    {% elif submission.status == 'revision_required' %}bg-orange-100 text-orange-800
+                                    {% else %}bg-gray-100 text-gray-800 {% endif %}">
+                                    <i class="fa
+                                        {% if submission.status == 'approved' %}fa-check-circle
+                                        {% elif submission.status == 'submitted' %}fa-paper-plane
+                                        {% elif submission.status == 'under_review' %}fa-clock
+                                        {% elif submission.status == 'rejected' %}fa-times-circle
+                                        {% elif submission.status == 'revision_required' %}fa-exclamation-circle
+                                        {% else %}fa-edit{% endif %}
+                                        mr-1"></i>
+                                    {{ submission.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4">
+                                {% if submission.calculated_score is not None %}
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-16 bg-muted rounded-full h-2">
+                                        <div class="bg-primary h-2 rounded-full" style="width: {{ submission.calculated_score }}%"></div>
+                                    </div>
+                                    <span class="text-sm font-medium text-card-foreground">{{ submission.calculated_score|floatformat:1 }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-sm text-muted-foreground">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-4 text-sm text-muted-foreground">
+                                {% if submission.submitted_at %}
+                                    {{ submission.submitted_at|date:"M d, Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-4 text-right">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <a href="{% url 'fpo:submission_detail' fpo.pk submission.pk %}"
+                                       class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors">
+                                        <i class="fa fa-eye mr-1"></i>
+                                        {% trans "View Details" %}
+                                    </a>
+                                    {% if submission.can_edit %}
+                                    <a href="{% url 'fpo:submission_edit' fpo.pk submission.pk %}"
+                                       class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-yellow-foreground bg-yellow-500 hover:bg-yellow-600 transition-colors">
+                                        <i class="fa fa-edit mr-1"></i>
+                                        {% trans "Edit" %}
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-8">
+                <div class="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-file-alt text-2xl text-muted-foreground"></i>
+                </div>
+                <p class="text-muted-foreground">{% trans "No yearly submissions yet" %}</p>
+                <p class="text-sm text-muted-foreground mt-1">
+                    {% trans "Upload documents to create your first submission" %}
+                </p>
+                <a href="{% url 'fpo:fpo_document_upload' fpo.pk %}" class="inline-flex items-center justify-center px-4 py-2 mt-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-upload mr-2"></i>
+                    {% trans "Upload Document" %}
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if yearly_submissions %}
+<!-- Report Modal -->
+<div id="reportModal"
+     class="fixed inset-0 bg-black/60 hidden items-center justify-center p-3 sm:p-6"
+     style="z-index: 1200;">
+    <div class="bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col"
+         style="width: min(96vw, 1300px); height: min(92vh, 920px);">
+        <div class="px-4 sm:px-6 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 class="text-base sm:text-lg font-semibold text-card-foreground">{% trans "Submission Report" %}</h3>
+            <div class="flex flex-wrap gap-2">
+                <a id="openReportInNewTab"
+                   href="{% url 'fpo:submission_report_view' fpo.pk yearly_submissions.0.pk %}"
+                   target="_blank"
+                   rel="noopener"
+                   class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border transition-colors">
+                    <i class="fa fa-external-link mr-2"></i>
+                    {% trans "Open Full View" %}
+                </a>
+                <a id="downloadReportPdf"
+                   href="{% url 'fpo:submission_pdf_report' fpo.pk yearly_submissions.0.pk %}"
+                         data-default-label="{% trans 'Download PDF' %}"
+                         data-loading-label="{% trans 'Preparing...' %}"
+                   class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-download mr-2"></i>
+                    {% trans "Download PDF" %}
+                </a>
+                <button type="button"
+                        onclick="closeReportViewer()"
+                        class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border transition-colors">
+                    <i class="fa fa-times mr-2"></i>
+                    {% trans "Close" %}
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-muted/20 min-h-0">
+            <iframe id="reportViewerFrame"
+                    src="about:blank"
+                    title="{% trans 'Submission Report Preview' %}"
+                    class="w-full h-full border-0"
+                    loading="lazy"></iframe>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Member Modal -->
+<div id="memberModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-card rounded-xl p-6 m-4 w-full max-w-md border border-border shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-card-foreground">{% trans "Add New Member" %}</h3>
+            <button type="button" onclick="toggleMemberModal()" class="text-muted-foreground hover:text-card-foreground">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        
+        <form method="post" action="{% url 'fpo:add_member' fpo.pk %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-card-foreground mb-2">{% trans "Search User" %}</label>
+                    <div class="relative">
+                        <input type="text" id="userSearch" placeholder="{% trans 'Type to search users...' %}" class="form-control pr-10" autocomplete="off">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <i class="fa fa-search text-muted-foreground"></i>
+                        </div>
+                    </div>
+                    <div id="userSearchResults" class="absolute z-10 bg-card border border-border rounded-lg shadow-lg hidden max-h-485 w-96 overflow-y-auto mt-1"></div>
+                    <input type="hidden" id="selectedUserId" name="user_id" required>
+                    <div id="selectedUserDisplay" class="hidden mt-2 p-3 bg-muted/50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <i class="fa fa-user text-primary text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-card-foreground" id="selectedUserName"></p>
+                                    <p class="text-xs text-muted-foreground" id="selectedUserEmail"></p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="clearSelectedUser()" class="text-muted-foreground hover:text-destructive">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-card-foreground mb-2">{% trans "Role" %}</label>
+                    <select name="role" class="form-control">
+                        <!-- <option value="viewer">{% trans "Viewer" %}</option> -->
+                        <option value="admin">{% trans "Admin" %}</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="toggleMemberModal()" class="px-4 py-2 text-sm font-medium text-muted-foreground border border-border rounded-lg hover:bg-accent transition-colors">
+                    {% trans "Cancel" %}
+                </button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                    {% trans "Add Member" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let reportModalEventsBound = false;
+
+function setDownloadLoadingState(downloadButton) {
+    if (!downloadButton || downloadButton.dataset.loading === 'true') {
+        return;
+    }
+
+    const loadingLabel = downloadButton.dataset.loadingLabel || 'Preparing...';
+    downloadButton.dataset.loading = 'true';
+    downloadButton.setAttribute('aria-busy', 'true');
+    downloadButton.classList.add('opacity-70', 'pointer-events-none');
+    downloadButton.innerHTML = `<i class="fa fa-spinner fa-spin mr-2"></i>${loadingLabel}`;
+}
+
+function resetDownloadLoadingState(downloadButton) {
+    if (!downloadButton) {
+        return;
+    }
+
+    const defaultLabel = downloadButton.dataset.defaultLabel || 'Download PDF';
+    downloadButton.dataset.loading = 'false';
+    downloadButton.setAttribute('aria-busy', 'false');
+    downloadButton.classList.remove('opacity-70', 'pointer-events-none');
+    downloadButton.innerHTML = `<i class="fa fa-download mr-2"></i>${defaultLabel}`;
+}
+
+function openReportViewer(reportUrl, pdfUrl) {
+    const modal = document.getElementById('reportModal');
+    const frame = document.getElementById('reportViewerFrame');
+    const openFullLink = document.getElementById('openReportInNewTab');
+    const downloadPdfLink = document.getElementById('downloadReportPdf');
+
+    if (!modal || !frame || !reportUrl) {
+        return;
+    }
+
+    initializeReportModal();
+    frame.src = reportUrl;
+
+    if (openFullLink) {
+        openFullLink.href = reportUrl;
+    }
+    if (downloadPdfLink && pdfUrl) {
+        downloadPdfLink.href = pdfUrl;
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeReportViewer() {
+    const modal = document.getElementById('reportModal');
+    const frame = document.getElementById('reportViewerFrame');
+    const downloadPdfLink = document.getElementById('downloadReportPdf');
+
+    if (!modal || !frame) {
+        return;
+    }
+
+    frame.src = 'about:blank';
+    resetDownloadLoadingState(downloadPdfLink);
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+}
+
+function initializeReportModal() {
+    const modal = document.getElementById('reportModal');
+    const downloadPdfLink = document.getElementById('downloadReportPdf');
+    if (!modal || reportModalEventsBound) {
+        return;
+    }
+
+    if (downloadPdfLink) {
+        downloadPdfLink.addEventListener('click', function() {
+            setDownloadLoadingState(downloadPdfLink);
+
+            // Downloads do not trigger a reliable completion event in browser,
+            // so restore the button after a short visual confirmation window.
+            window.setTimeout(function() {
+                resetDownloadLoadingState(downloadPdfLink);
+            }, 3500);
+        });
+    }
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeReportViewer();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeReportViewer();
+        }
+    });
+
+    reportModalEventsBound = true;
+}
+
+// Initialize modal functionality
+function initializeMemberModal() {
+    function toggleMemberModal() {
+        const modal = document.getElementById('memberModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        } else {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+            clearSelectedUser();
+        }
+    }
+
+    let searchTimeout;
+    const userSearch = document.getElementById('userSearch');
+    const searchResults = document.getElementById('userSearchResults');
+    const selectedUserId = document.getElementById('selectedUserId');
+    const selectedUserDisplay = document.getElementById('selectedUserDisplay');
+
+    // Add event listeners to modal toggle buttons
+    document.querySelectorAll('[onclick*="toggleMemberModal"]').forEach(button => {
+        button.onclick = toggleMemberModal;
+    });
+
+    if (userSearch) {
+        userSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                fetch(`{% url 'fpo:search_users' %}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        displaySearchResults(data.users);
+                    })
+                    .catch(error => {
+                        console.error('Error searching users:', error);
+                    });
+            }, 300);
+        });
+    }
+
+    function displaySearchResults(users) {
+        if (!searchResults) return;
+        
+        searchResults.innerHTML = '';
+        
+        if (users.length === 0) {
+            searchResults.innerHTML = '<div class="p-3 text-sm text-muted-foreground">{% trans "No users found" %}</div>';
+        } else {
+            users.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'p-3 hover:bg-accent cursor-pointer border-b border-border last:border-b-0';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                            <i class="fa fa-user text-primary text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-card-foreground">${user.full_name || user.username}</p>
+                            <p class="text-xs text-muted-foreground">${user.email || ""}</p>
+                        </div>
+                    </div>
+                `;
+                div.addEventListener('click', () => selectUser(user));
+                searchResults.appendChild(div);
+            });
+        }
+        
+        searchResults.classList.remove('hidden');
+    }
+
+    function selectUser(user) {
+        if (selectedUserId && selectedUserDisplay) {
+            selectedUserId.value = user.id;
+            document.getElementById('selectedUserName').textContent = user.full_name || user.username;
+            document.getElementById('selectedUserEmail').textContent = user.email;
+            selectedUserDisplay.classList.remove('hidden');
+            userSearch.value = '';
+            searchResults.classList.add('hidden');
+        }
+    }
+
+    function clearSelectedUser() {
+        if (selectedUserId && selectedUserDisplay) {
+            selectedUserId.value = '';
+            selectedUserDisplay.classList.add('hidden');
+            userSearch.value = '';
+            if (searchResults) {
+                searchResults.classList.add('hidden');
+            }
+        }
+    }
+
+    // Close modal when clicking outside
+    const modal = document.getElementById('memberModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                toggleMemberModal();
+            }
+        });
+    }
+
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (userSearch && searchResults) {
+            if (!e.target.closest('#userSearch') && !e.target.closest('#userSearchResults')) {
+                searchResults.classList.add('hidden');
+            }
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeReportModal();
+    initializeMemberModal();
+});
+
+// Re-initialize on Turbo navigation
+document.addEventListener('turbo:load', function() {
+    initializeReportModal();
+    initializeMemberModal();
+});
+document.addEventListener('turbo:frame-render', function() {
+    initializeReportModal();
+    initializeMemberModal();
+});
+</script>
+
+{% endblock %}

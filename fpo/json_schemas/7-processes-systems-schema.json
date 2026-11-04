@@ -1,0 +1,74 @@
+{
+  "title": "Processes and Systems (E)",
+  "description": "Schema for FPO process and systems information",
+  "type": "object",
+  "properties": {
+    "accountsMIS": {
+      "type": "string",
+      "title": "Accounts MIS",
+      "enum": [
+        "No MIS is present ,Accounting is done manually",
+        "Accounting managed by using basic MS Office tools but not software packages",
+        "Accounting managed by tally, but no digitalization of the other operational records",
+        "Software for managing accounts & digitalization of MIS"
+      ]
+    },
+    "insuranceStock": {
+      "type": "string",
+      "title": "Insurance Stock",
+      "enum": [
+        "No insurance cover",
+        "Less than 50% of the stock is insured against fire",
+        "50% of the stock is insured against fire & theft",
+        "100% stock is insured against fire & theft"
+      ]
+    },
+    "creditRecord": {
+      "type": "string",
+      "title": "Credit Record",
+      "enum": [
+        "No Credit History",
+        "More than one Record of delays/defaults in the last 3 financial years",
+        "One record of delays/defaults in last 3 financial years",
+        "No records of delays or default"
+      ]
+    },
+    "statutoryFillings": {
+      "type": "string",
+      "title": "Statutory Fillings",
+      "enum": [
+        "Any delays in the past 12 months that are not yet filled",
+        "Multiple delays (>5) over the past 12 months but filled as on date",
+        "Few delays (<3) over the past 12 months but filled as on date",
+        "No delays"
+      ]
+    },
+    "booksRecords": {
+      "type": "string",
+      "title": "Books and Records",
+      "enum": [
+        "Updated on monthly or more basis",
+        "Updated on weekly basis",
+        "Updated with a lag of 2-3 days",
+        "Current"
+      ]
+    },
+    "reconciliationStocks": {
+      "type": "string",
+      "title": "Reconciliation of Stocks",
+      "enum": [
+        "Absent or Annual",
+        "2-4 times in a year",
+        "Monthly",
+        "At least every 15 days"
+      ]
+    },
+    "penaltiesLevied": {
+      "type": "string",
+      "title": "Penalties Levied",
+      "enum": ["Yes", "No"]
+    }
+  },
+  "required": ["accountsMIS", "insuranceStock", "creditRecord", "statutoryFillings", "booksRecords", "reconciliationStocks", "penaltiesLevied"],
+  "additionalProperties": false
+}

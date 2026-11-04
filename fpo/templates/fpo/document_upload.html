@@ -1,0 +1,680 @@
+{% extends 'base_app.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .upload-box {
+        border: 2px dashed var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 3rem;
+        text-align: center;
+        background: var(--color-card);
+        transition: all 0.3s ease;
+        position: relative;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .upload-box.dragover {
+        border-color: var(--color-primary);
+        background: var(--color-accent);
+    }
+    
+    .upload-icon {
+        font-size: 4rem;
+        color: var(--color-muted-foreground);
+        margin-bottom: 1rem;
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .upload-button {
+        background: var(--color-primary);
+        color: var(--color-primary-foreground);
+        padding: 0.75rem 2rem;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: opacity 0.2s;
+    }
+    
+    .upload-button:hover {
+        opacity: 0.9;
+    }
+    
+    .file-preview {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: var(--color-muted);
+        border-radius: var(--radius-md);
+        display: none;
+    }
+    
+    .file-preview.active {
+        display: block;
+    }
+    
+    .preview-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem;
+    }
+    
+    .preview-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .remove-file {
+        color: var(--color-destructive);
+        cursor: pointer;
+    }
+    
+    .process-button {
+        background: var(--color-primary);
+        color: var(--color-primary-foreground);
+        padding: 0.75rem 2rem;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        margin-top: 1rem;
+        width: 100%;
+        display: none;
+    }
+    
+    .process-button.active {
+        display: block;
+    }
+    
+    .process-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .results-container {
+        margin-top: 2rem;
+        display: none;
+    }
+    
+    .results-container.active {
+        display: block;
+    }
+    
+    .result-section {
+        background: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .result-section h3 {
+        margin-top: 0;
+        color: var(--color-primary);
+        border-bottom: 1px solid var(--color-border);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .result-field {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem;
+        background: var(--color-background);
+        border-radius: var(--radius-sm);
+    }
+    
+    .field-label {
+        font-weight: 600;
+        color: var(--color-muted-foreground);
+    }
+    
+    .field-value {
+        color: var(--color-foreground);
+    }
+    
+    .field-value input,
+    .field-value select,
+    .field-value textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background: var(--color-background);
+        color: var(--color-foreground);
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .loading-overlay.active {
+        display: flex;
+    }
+    
+    .loading-content {
+        background: var(--color-card);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+    }
+    
+    .spinner {
+        border: 4px solid var(--color-border);
+        border-top: 4px solid var(--color-primary);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .save-button {
+        background: var(--color-primary);
+        color: var(--color-primary-foreground);
+        padding: 0.75rem 2rem;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background: var(--color-primary);
+        color: var(--color-primary-foreground);
+    }
+    
+    .alert-error {
+        background: var(--color-destructive);
+        color: var(--color-destructive-foreground);
+    }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="container upload-container">
+    
+    <div class="mb-4">
+        <a href="{% url 'fpo:fpo_detail' fpo.pk %}" class="text-primary hover:underline">
+            ← Back to FPO Details
+        </a>
+    </div>
+    
+    <!-- Upload Section -->
+    <div class="card">
+        <div class="card-body">
+            <h2 class="text-xl font-semibold mb-4">Upload FPO Document</h2>
+            
+            <div class="mb-4">
+                <label for="financial_year" class="block mb-2">Financial Year</label>
+                <select id="financial_year" class="form-control">
+                    <option value="2024-25">2024-25</option>
+                    <option value="2023-24">2023-24</option>
+                    <option value="2022-23">2022-23</option>
+                    <option value="2021-22">2021-22</option>
+                </select>
+            </div>
+            
+            <div class="upload-box" id="uploadBox">
+                <i class="fa fa-cloud-upload upload-icon"></i>
+                <h3 class="text-lg mb-2">Drag and drop your document here</h3>
+                <p class="text-muted mb-4">or</p>
+                <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                    Browse Files
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp">
+                <p class="text-sm text-gray-500 mt-4">Supported formats: PDF, JPG, PNG, GIF, BMP</p>
+            </div>
+            
+            <div class="file-preview" id="filePreview">
+                <div class="preview-item">
+                    <div class="preview-name">
+                        <i class="fa fa-file"></i>
+                        <span id="fileName"></span>
+                    </div>
+                    <i class="fa fa-times remove-file" onclick="removeFile()"></i>
+                </div>
+            </div>
+            
+            <button class="process-button" id="processButton" onclick="processDocument()">
+                <i class="fa fa-magic"></i> Process & Save to Database
+            </button>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="results-container" id="resultsContainer">
+        <h2 class="text-2xl font-semibold mb-4">Extracted Information</h2>
+        
+        <div id="resultsContent">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p>Processing document with AI...</p>
+        <p class="text-sm text-muted">This may take a moment</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedFile = null;
+    let extractedData = null;
+    const fpoId = "{{ fpo.pk }}";  // Wrap in quotes for JavaScript string
+    
+    // Setup drag and drop
+    const uploadBox = document.getElementById('uploadBox');
+    const fileInput = document.getElementById('fileInput');
+    
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+    });
+    
+    uploadBox.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+    });
+    
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+    
+    function handleFileSelect(file) {
+        selectedFile = file;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('filePreview').classList.add('active');
+        document.getElementById('processButton').classList.add('active');
+    }
+    
+    function removeFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        document.getElementById('filePreview').classList.remove('active');
+        document.getElementById('processButton').classList.remove('active');
+        document.getElementById('resultsContainer').classList.remove('active');
+    }
+    
+    function processDocument() {
+        if (!selectedFile) {
+            alert('Please select a file first');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('document', selectedFile);
+        formData.append('fpo_id', fpoId);
+        formData.append('financial_year', document.getElementById('financial_year').value);
+        formData.append('auto_save', 'false');
+        
+        // Show loading
+        document.getElementById('loadingOverlay').classList.add('active');
+        document.getElementById('processButton').disabled = true;
+        
+        // Send request
+        fetch('{% url "fpo:process_fpo_document" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingOverlay').classList.remove('active');
+            document.getElementById('processButton').disabled = false;
+            
+            if (data.success) {
+                extractedData = data.results;
+                displayResults(data.results);
+                
+                // Redirect to submission detail page if submission ID is available
+                if (data.submission_id) {
+                    // Show success message and redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = `/fpo/fpos/${fpoId}/submissions/${data.submission_id}/`;
+                    }, 2000); // Redirect after 2 seconds to show success message
+                }
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
+            }
+        })
+        .catch(error => {
+            document.getElementById('loadingOverlay').classList.remove('active');
+            document.getElementById('processButton').disabled = false;
+            alert('Error processing document: ' + error.message);
+        });
+    }
+    
+    function displayResults(data) {
+        const resultsContent = document.getElementById('resultsContent');
+        resultsContent.innerHTML = '';
+        
+        // Display processing metadata
+        if (data.processing_metadata) {
+            const metadataSection = document.createElement('div');
+            metadataSection.className = 'result-section';
+            let metadataHtml = '<h3><i class="fa fa-info-circle"></i> Processing Information</h3>';
+            
+            const metadata = data.processing_metadata;
+            metadataHtml += `
+                <div class="result-field">
+                    <div class="field-label">Processing Method:</div>
+                    <div class="field-value">
+                        <span class="px-2 py-1 rounded text-sm ${metadata.processing_method === 'text_extraction' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
+                            ${metadata.processing_method === 'text_extraction' ? 'Text Extraction' : 'OCR (Image Processing)'}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            if (metadata.has_forms) {
+                metadataHtml += `
+                    <div class="result-field">
+                        <div class="field-label">Form Fields Found:</div>
+                        <div class="field-value">${metadata.form_fields_count} fields</div>
+                    </div>
+                `;
+            }
+            
+            if (metadata.text_length > 0) {
+                metadataHtml += `
+                    <div class="result-field">
+                        <div class="field-label">Text Content Length:</div>
+                        <div class="field-value">${metadata.text_length} characters</div>
+                    </div>
+                `;
+            }
+            
+            metadataSection.innerHTML = metadataHtml;
+            resultsContent.appendChild(metadataSection);
+        }
+        
+        // Form data is processed internally but not displayed
+        
+        // Display save results
+        if (data.save_result) {
+            const saveSection = document.createElement('div');
+            saveSection.className = 'result-section';
+            
+            if (data.save_result.success) {
+                saveSection.style.borderColor = 'var(--color-primary)';
+                saveSection.innerHTML = `
+                    <h3><i class="fa fa-check-circle text-green-600"></i> Data Saved Successfully</h3>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="result-field">
+                            <div class="field-label">Sections Saved:</div>
+                            <div class="field-value">${data.save_result.saved_sections.length} sections</div>
+                        </div>
+                        <div class="result-field">
+                            <div class="field-label">Objects Created:</div>
+                            <div class="field-value">${data.save_result.created_objects || 0}</div>
+                        </div>
+                        <div class="result-field">
+                            <div class="field-label">Objects Updated:</div>
+                            <div class="field-value">${data.save_result.updated_objects || 0}</div>
+                        </div>
+                        <div class="result-field">
+                            <div class="field-label">Submission Status:</div>
+                            <div class="field-value">
+                                <span class="px-2 py-1 rounded text-xs ${data.save_result.submission_created ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}">
+                                    ${data.save_result.submission_created ? 'New Submission' : 'Updated Existing'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="result-field">
+                            <div class="field-label">Submission ID:</div>
+                            <div class="field-value">${data.save_result.submission_id}</div>
+                        </div>
+                    </div>
+                    ${data.save_result.saved_sections.length > 0 ? `
+                        <div class="mt-4">
+                            <div class="field-label mb-2">Saved Sections:</div>
+                            <div class="flex flex-wrap gap-2">
+                                ${data.save_result.saved_sections.map(section => 
+                                    `<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">${section.replace('_', ' ')}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${data.save_result.errors && data.save_result.errors.length > 0 ? `
+                        <div class="mt-4">
+                            <div class="field-label mb-2 text-orange-600">Partial Save Warnings:</div>
+                            <div class="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
+                                ${data.save_result.errors.map(error => 
+                                    `<div class="text-sm text-orange-700">${error}</div>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            } else {
+                saveSection.style.borderColor = 'var(--color-destructive)';
+                saveSection.innerHTML = `
+                    <h3><i class="fa fa-exclamation-triangle text-red-600"></i> Save Failed</h3>
+                    <p class="text-sm text-red-600 mt-2">${data.save_result.error || 'Unknown error occurred'}</p>
+                `;
+            }
+            resultsContent.appendChild(saveSection);
+        }
+        
+        // Display extracted information (summary view)
+        if (data.extracted_information) {
+            for (const [sectionName, sectionData] of Object.entries(data.extracted_information)) {
+                const section = createSummarySection(sectionName, sectionData);
+                resultsContent.appendChild(section);
+            }
+        }
+        
+        // Display AI summary
+        if (data.ai_summary) {
+            const summarySection = document.createElement('div');
+            summarySection.className = 'result-section';
+            summarySection.innerHTML = `
+                <h3><i class="fa fa-robot"></i> AI Summary</h3>
+                <p>${data.ai_summary}</p>
+            `;
+            resultsContent.appendChild(summarySection);
+        }
+        
+        // Display any text extraction errors
+        if (data.text_extraction_error) {
+            const errorSection = document.createElement('div');
+            errorSection.className = 'result-section';
+            errorSection.style.borderColor = 'var(--color-destructive)';
+            errorSection.innerHTML = `
+                <h3><i class="fa fa-exclamation-triangle"></i> Text Extraction Warning</h3>
+                <p class="text-sm text-muted-foreground">${data.text_extraction_error}</p>
+            `;
+            resultsContent.appendChild(errorSection);
+        }
+        
+        document.getElementById('resultsContainer').classList.add('active');
+    }
+    
+    function createSummarySection(sectionName, sectionData) {
+        const section = document.createElement('div');
+        section.className = 'result-section';
+        
+        // Format section name
+        const formattedName = sectionName.replace(/_/g, ' ').replace(/extract /g, '').toUpperCase();
+        
+        let html = `<h3><i class="fa fa-database"></i> ${formattedName} (Saved to Database)</h3>`;
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">';
+        
+        let fieldCount = 0;
+        for (const [fieldName, fieldValue] of Object.entries(sectionData)) {
+            if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
+                const formattedFieldName = fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                html += `
+                    <div class="p-3 bg-muted/30 rounded-lg">
+                        <div class="text-xs font-medium text-muted-foreground mb-1">${formattedFieldName}</div>
+                        <div class="text-sm text-foreground">${formatSummaryValue(fieldValue)}</div>
+                    </div>
+                `;
+                fieldCount++;
+            }
+        }
+        
+        html += '</div>';
+        
+        if (fieldCount === 0) {
+            html += '<p class="text-sm text-muted-foreground">No data extracted for this section.</p>';
+        }
+        
+        section.innerHTML = html;
+        return section;
+    }
+    
+    function formatSummaryValue(fieldValue) {
+        if (fieldValue === null || fieldValue === undefined) {
+            return '<span class="text-muted-foreground">Not provided</span>';
+        }
+        
+        if (typeof fieldValue === 'boolean') {
+            return `<span class="px-2 py-1 rounded text-xs ${fieldValue ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${fieldValue ? 'Yes' : 'No'}</span>`;
+        }
+        
+        if (Array.isArray(fieldValue)) {
+            return `<span class="text-xs">${fieldValue.length} items</span>`;
+        }
+        
+        if (typeof fieldValue === 'object') {
+            return '<span class="text-xs">Complex data</span>';
+        }
+        
+        return fieldValue.toString();
+    }
+    
+    function createResultSection(sectionName, sectionData) {
+        const section = document.createElement('div');
+        section.className = 'result-section';
+        
+        // Format section name
+        const formattedName = sectionName.replace(/_/g, ' ').replace(/extract /g, '').toUpperCase();
+        
+        let html = `<h3>${formattedName}</h3>`;
+        
+        for (const [fieldName, fieldValue] of Object.entries(sectionData)) {
+            const formattedFieldName = fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            html += `
+                <div class="result-field">
+                    <div class="field-label">${formattedFieldName}:</div>
+                    <div class="field-value">
+                        ${formatFieldValue(fieldName, fieldValue)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        section.innerHTML = html;
+        return section;
+    }
+    
+    function formatFieldValue(fieldName, fieldValue) {
+        if (fieldValue === null || fieldValue === undefined) {
+            return '<span class="text-muted">Not provided</span>';
+        }
+        
+        if (typeof fieldValue === 'boolean') {
+            return fieldValue ? 'Yes' : 'No';
+        }
+        
+        if (Array.isArray(fieldValue)) {
+            return fieldValue.map(item => {
+                if (typeof item === 'object') {
+                    return JSON.stringify(item, null, 2);
+                }
+                return item;
+            }).join(', ');
+        }
+        
+        if (typeof fieldValue === 'object') {
+            return JSON.stringify(fieldValue, null, 2);
+        }
+        
+        // Create editable input for text/number fields
+        if (typeof fieldValue === 'string' || typeof fieldValue === 'number') {
+            return `<input type="text" value="${fieldValue}" data-field="${fieldName}" class="editable-field">`;
+        }
+        
+        return fieldValue;
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

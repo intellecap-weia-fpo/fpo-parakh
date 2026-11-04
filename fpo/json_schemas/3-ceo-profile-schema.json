@@ -1,0 +1,50 @@
+{
+  "title": "Profile of Chief Executive Officer",
+  "description": "Schema for CEO profile information",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Name",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "qualification": {
+      "type": "string",
+      "title": "Qualification (I)",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "typeOfExperience": {
+      "type": "string",
+      "title": "Type of experience (E)",
+      "enum": [
+        "Agricultural Cooperatives/Farmer producer organizations",
+        "Farmer-owned enterprises",
+        "Non-governmental organization / Non-profit organization focused on agricultural sector / fisheries / animal husbandry",
+        "Farm Management",
+        "Village councils",
+        "Self-help groups",
+        "Governmental departments of agricultural sector / fisheries / animal husbandry",
+        "Knowledge of key business functions ( Marketing, Finance, business development etc.)",
+        "Any other"
+      ]
+    },
+    "otherExperienceType": {
+      "type": "string",
+      "title": "Please specify other experience type",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "totalYearsOfExperience": {
+      "type": "integer",
+      "title": "Total years of experience (E)",
+      "minimum": 0,
+      "maximum": 60
+    }
+  },
+  "required": ["name", "qualification", "typeOfExperience", "totalYearsOfExperience"],
+  "additionalProperties": false,
+  "if": {"properties": {"typeOfExperience": {"const": "Any other"}}},
+  "then": {"required": ["otherExperienceType"]}
+}

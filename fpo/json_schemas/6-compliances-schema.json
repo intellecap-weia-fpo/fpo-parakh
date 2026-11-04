@@ -1,0 +1,92 @@
+{
+  "title": "Details of Compliances",
+  "description": "Schema for FPO compliance and registration information",
+  "type": "object",
+  "properties": {
+    "actUnderRegistered": {
+      "type": "string",
+      "title": "Act under which registered",
+      "enum": ["Company Act", "Co-operative Societies Act", "Other"]
+    },
+    "dateOfRegistration": {
+      "type": "string",
+      "title": "Date of Registration",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "placeOfRegistration": {
+      "type": "string",
+      "title": "Place of Registration",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "registrationNo": {
+      "type": "string",
+      "title": "Registration Number",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "incorporationDate": {
+      "type": "string",
+      "title": "Certificate of Incorporation Date",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "incorporationPlace": {
+      "type": "string",
+      "title": "Certificate of Incorporation Place",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "incorporationRegNo": {
+      "type": "string",
+      "title": "Certificate of Incorporation Reg No",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "commencementDate": {
+      "type": "string",
+      "title": "Certificate of Commencement Date",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "commencementPlace": {
+      "type": "string",
+      "title": "Certificate of Commencement Place",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "commencementRegNo": {
+      "type": "string",
+      "title": "Certificate of Commencement Reg No",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "gstDate": {
+      "type": "string",
+      "title": "GST Registration Date",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "gstPlace": {
+      "type": "string",
+      "title": "GST Registration Place",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "gstRegNo": {
+      "type": "string",
+      "title": "GST Registration Number",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "permanentAccountNumber": {
+      "type": "string",
+      "title": "PAN Number",
+      "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+    },
+    "taxAccountNumber": {
+      "type": "string",
+      "title": "TAN Number",
+      "pattern": "^[A-Z]{4}[0-9]{5}[A-Z]{1}$"
+    }
+  },
+  "required": ["actUnderRegistered", "dateOfRegistration", "placeOfRegistration", "registrationNo", "permanentAccountNumber"],
+  "additionalProperties": false
+}

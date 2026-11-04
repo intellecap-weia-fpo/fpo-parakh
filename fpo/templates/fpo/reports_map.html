@@ -1,0 +1,1860 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}FPO Admin - Map Reports{% endblock %}
+
+{% block meta_description %}FPO Map - Geographic distribution of FPOs across India{% endblock %}
+
+{% block body_class %}bg-background text-foreground min-h-screen{% endblock %}
+
+{% block extra_head %}
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.js" data-turbo-track="reload"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js" data-turbo-track="reload"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Alpine.js cloak */
+  [x-cloak] {
+    display: none !important;
+  }
+
+  /* Override primary colors with #004687 */
+  :root {
+    --primary-brand: #163a68;
+    --primary-brand-light: #2f5ed1;
+    --primary-brand-dark: #0c294d;
+    --primary-brand-50: #eaf2fd;
+    --primary-brand-100: #d8e6fa;
+    --primary-brand-200: #b7cff3;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Custom scrollbar for sidebar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Custom styles for reports layout */
+  .reports-layout {
+    display: flex;
+    min-height: 100vh;
+    padding-top: 64px; /* Height of top nav bar */
+  }
+
+  .reports-sidebar {
+    position: fixed;
+    left: 0;
+    top: 64px; /* Start below top nav bar */
+    bottom: 0;
+    height: calc(100vh - 64px); /* Full height minus top nav bar */
+    z-index: 40;
+    overflow-y: auto;
+  }
+
+  .reports-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+  }
+
+  .reports-topbar {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .reports-content {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Map container */
+  #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 1023px) {
+    .reports-main {
+      margin-left: 0 !important;
+    }
+  }
+
+  /* Filter section styling */
+  .filter-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    display: block;
+    padding-left: 0.25rem;
+    transition: color 0.15s ease;
+  }
+
+  .filter-label.primary {
+    color: var(--primary-brand);
+  }
+
+  .mapboxgl-ctrl-bottom-right {
+    display: none;
+  }
+
+  .mapboxgl-ctrl-bottom-left {
+    display: none;
+  }
+
+  .filter-select {
+    width: 100%;
+    background-color: #f8fafc;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: #334155;
+    transition: all 0.15s ease;
+  }
+
+  .filter-select:hover {
+    background-color: #f1f5f9;
+  }
+
+  .filter-select:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--primary-brand);
+  }
+
+  /* Primary brand button */
+  .btn-primary-brand {
+    background: linear-gradient(to bottom right, var(--primary-brand), var(--primary-brand-dark));
+    color: white;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 70, 135, 0.3);
+    transition: all 0.15s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary-brand:hover {
+    background: linear-gradient(to bottom right, var(--primary-brand-light), var(--primary-brand));
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    background: #0f172a;
+    color: white;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    transition: all 0.15s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-secondary:hover {
+    background: #1e293b;
+  }
+
+
+  /* Custom Popup Styles */
+  .mapboxgl-popup-content {
+    padding: 0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    font-family: 'Space Grotesque', sans-serif;
+  }
+
+  .fpo-popup {
+    min-width: 280px;
+  }
+
+  .popup-header {
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .header-icon i {
+    color: white;
+    font-size: 18px;
+  }
+
+  .popup-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #1e293b;
+    flex: 1;
+  }
+
+  .popup-body {
+    padding: 16px;
+  }
+
+  .popup-info {
+    margin-bottom: 16px;
+  }
+
+  .info-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+  }
+
+  .info-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .info-row i {
+    color: #004687;
+    font-size: 14px;
+    width: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .info-content {
+    flex: 1;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+  }
+
+  .info-content strong {
+    color: #1e293b;
+    font-weight: 600;
+  }
+
+  .score-badge {
+    display: inline-block;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .category-badge {
+    display: inline-block;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .view-details-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #004687;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .view-details-btn:hover {
+    background: #0056a8;
+    box-shadow: 0 2px 6px rgba(0, 70, 135, 0.3);
+  }
+
+  .view-details-btn i {
+    font-size: 11px;
+  }
+
+  .view-details-btn span {
+    line-height: 1;
+  }
+
+  .mapboxgl-popup-close-button {
+    font-size: 18px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    background: transparent;
+    border-radius: 4px;
+    right: 10px;
+    top: 10px;
+    line-height: 24px;
+    transition: all 0.2s ease;
+  }
+
+  .mapboxgl-popup-close-button:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  .mapboxgl-popup-tip {
+    border-top-color: #f8fafc !important;
+  }
+
+  /* Default Mapbox marker hover effect */
+  .mapboxgl-marker {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .mapboxgl-marker:hover {
+    transform: scale(1.1);
+  }
+
+  /* View Tabs (Bottom) */
+  .view-tabs {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 12px;
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+  }
+
+  .tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  .tab-btn.active {
+    background: #004687;
+    color: white;
+  }
+
+  .tab-btn i {
+    font-size: 16px;
+  }
+
+  .tab-btn .count-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  .tab-btn.active .count-badge {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Custom Pin Marker Styles */
+  .custom-pin-marker {
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .custom-pin-marker:hover {
+    transform: scale(1.1);
+  }
+
+  .custom-pin-marker svg {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  }
+
+  .custom-pin-marker:hover svg {
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  }
+
+  /* Side Panel Styles */
+  .panel-tab {
+    color: #64748b;
+    border-bottom: 2px solid transparent;
+  }
+
+  .panel-tab.active {
+    color: #004687;
+    border-bottom-color: #004687;
+  }
+
+  .panel-tab:hover {
+    color: #004687;
+  }
+
+  .panel-content {
+    display: none !important;
+  }
+
+  .panel-content.active {
+    display: block !important;
+  }
+
+  #sidePanel.open {
+    transform: translateY(-50%) translateX(0) !important;
+  }
+
+  /* Stats Card for Side Panel */
+  .stat-card-small {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.5s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stat-card-small:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+  }
+
+  .stat-card-small::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--card-color, #1b52ff);
+  }
+
+  .stat-card-small .stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-bottom: 12px;
+  }
+
+  .stat-card-small .stat-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+  }
+
+  .stat-card-small .stat-value {
+    font-family: 'Space Grotesque', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .stat-card-small .stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  /* Stats grid layout */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Panel tabs styling */
+  .panel-tabs-container {
+    border-bottom: 1px solid #e2e8f0;
+    background: #fafafa;
+  }
+
+  /* FPO and Agency Cards - matching stat-card style */
+  .fpo-card, .agency-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.5s ease forwards;
+    opacity: 0;
+  }
+
+  .fpo-card {
+    cursor: pointer;
+  }
+
+  .fpo-card:hover, .agency-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
+  }
+
+  .fpo-card::before, .agency-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--card-color, #1b52ff);
+  }
+
+  .fpo-card .card-icon, .agency-card .card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .fpo-card .card-icon svg, .agency-card .card-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+  }
+
+  /* List items scrollbar */
+  #fposListBody::-webkit-scrollbar,
+  #agenciesListBody::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #fposListBody::-webkit-scrollbar-track,
+  #agenciesListBody::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+
+  #fposListBody::-webkit-scrollbar-thumb,
+  #agenciesListBody::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  #fposListBody::-webkit-scrollbar-thumb:hover,
+  #agenciesListBody::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Score badges */
+  .score-badge-large {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'Space Grotesque', sans-serif;
+    line-height: 1;
+  }
+
+  .category-label-text {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  .reports-content {
+    background: radial-gradient(circle at 55% 42%, #f6f9ff 0%, #e7f0fc 72%, #dbe8f8 100%);
+  }
+
+  #map {
+    top: 1.5rem;
+    right: 1.5rem;
+    bottom: 4.75rem;
+    left: 1.5rem;
+    width: auto;
+    height: auto;
+    overflow: hidden;
+    border: 1px solid rgba(189, 205, 225, 0.9);
+    border-radius: 1rem;
+    box-shadow: 0 18px 45px rgba(22, 58, 104, 0.1);
+  }
+
+  .view-tabs {
+    border: 1px solid #d7e2ef;
+    box-shadow: 0 8px 24px rgba(22, 58, 104, 0.12);
+  }
+
+  @media (max-width: 767px) {
+    #map {
+      top: 0.75rem;
+      right: 0.75rem;
+      bottom: 4rem;
+      left: 0.75rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-layout" x-data="sidebarController()">
+  <!-- Top Navigation Bar -->
+  <nav class="fpo-topbar bg-card/90 border-b border-border/40 text-card-foreground fixed top-0 left-0 right-0 z-50">
+    <div class="px-4 sm:px-6 lg:px-6">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <!-- Sidebar Toggle - Desktop (Collapse) -->
+          <button @click="toggleCollapse()"
+                  class="hidden lg:flex items-center px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95"
+                  :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+            <i class="fa fa-bars text-current"></i>
+          </button>
+
+          <!-- Sidebar Toggle - Mobile -->
+          <button @click="toggleSidebar()"
+                  class="lg:hidden flex items-center justify-center p-2 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+            <i class="fa fa-bars text-current"></i>
+          </button>
+
+          <div class="fpo-brand flex items-center">
+            <div class="fpo-brand-mark"><i class="fa fa-sitemap"></i></div>
+            <a href="{% url 'fpo:fpos_list' %}" class="fpo-brand-copy"><strong>FPO Intelligence</strong><span>Rating Platform</span></a>
+          </div>
+        </div>
+
+        <!-- Right side - Language and User Menu -->
+        <div class="flex items-center space-x-1 md:space-x-3">
+          <!-- Language Switcher -->
+          <div class="relative" x-data="{ langOpen: false }">
+            <button @click="langOpen = !langOpen"
+                    class="flex items-center space-x-2 p-2 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+              <i class="fa fa-globe text-xl"></i>
+              <span class="hidden md:block text-sm font-medium">{% get_current_language as LANGUAGE_CODE %}{{ LANGUAGE_CODE|upper }}</span>
+              <i class="fa fa-chevron-down text-xs transition-transform duration-200"
+                 :class="{ 'rotate-180': langOpen }"></i>
+            </button>
+            <div x-show="langOpen"
+                 x-cloak
+                 @click.away="langOpen = false"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="transform opacity-0 scale-95 translate-y-1"
+                 x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave-end="transform opacity-0 scale-95 translate-y-1"
+                 class="absolute right-0 mt-3 w-56 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 z-50 overflow-hidden">
+              <div class="p-3">
+                <h3 class="text-sm font-semibold text-popover-foreground mb-3">{% trans "Language" %}</h3>
+                {% get_available_languages as LANGUAGES %}
+                {% for language_code, language_name in LANGUAGES %}
+                  {% if language_code == 'en' or language_code == 'hi' or language_code == 'mr' %}
+                    <form action="{% url 'neo:set_language' %}" method="post" class="inline-block w-full">
+                      {% csrf_token %}
+                      <input name="next" type="hidden" value="{{ request.get_full_path }}"/>
+                      <input name="language" type="hidden" value="{{ language_code }}"/>
+                      <button type="submit"
+                              class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-accent/50 text-popover-foreground transition-colors text-left {% if LANGUAGE_CODE == language_code %}bg-accent/30 text-accent-foreground{% endif %}">
+                        <span class="text-sm">{{ language_name }}</span>
+                        {% if LANGUAGE_CODE == language_code %}
+                          <i class="fa fa-check text-xs ml-auto text-primary"></i>
+                        {% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile -->
+          <div class="relative" x-data="{ profileOpen: false }">
+            <button @click="profileOpen = !profileOpen"
+                    class="flex items-center space-x-2 px-2 py-1 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+              <div class="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center shadow-sm">
+                <i class="fa fa-user text-base text-primary-foreground"></i>
+              </div>
+              <span class="hidden md:block text-sm font-medium">{{ user.username|truncatechars:12 }}</span>
+              <i class="fa fa-chevron-down text-xs transition-transform duration-200"
+                 :class="{ 'rotate-180': profileOpen }"></i>
+            </button>
+            <!-- Profile Dropdown -->
+            <div x-show="profileOpen"
+                 x-cloak
+                 @click.away="profileOpen = false"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="transform opacity-0 scale-95 translate-y-1"
+                 x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave-end="transform opacity-0 scale-95 translate-y-1"
+                 class="absolute right-0 mt-3 w-72 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 z-50 overflow-hidden">
+              <div class="p-5">
+                <div class="flex items-center space-x-4 mb-5">
+                  <div class="w-14 h-14 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fa fa-user text-primary-foreground text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-popover-foreground">{{ user.username }}</p>
+                    <p class="text-sm text-muted-foreground">{{ user.email|truncatechars:25 }}</p>
+                  </div>
+                </div>
+                <div class="border-t border-border/50 pt-3">
+                  <a href="{% url 'auth_app:logout' %}"
+                     class="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-destructive/10 hover:text-destructive text-popover-foreground transition-colors">
+                    <i class="fa fa-sign-out text-base"></i>
+                    <span class="text-sm">{% trans "Sign Out" %}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  {% include "fpo/sidebar.html" with sidebar_id="reportsSidebar" sidebar_filters_template="fpo/map_sidebar_filters.html" %}
+
+  <!-- Main Content -->
+  <main class="reports-main"
+        x-bind:class="sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64 xl:ml-72'"
+        x-bind:style="isDesktop ? (sidebarCollapsed ? 'margin-left: 4rem !important;' : 'margin-left: 18rem !important;') : ''">
+    <!-- Year Timeline -->
+    <div class="reports-topbar" style="min-height: 80px;">
+      <div class="w-full max-w-5xl mx-auto">
+        <div class="relative flex items-center justify-between" id="timelineYears">
+          <!-- Years will be dynamically populated -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Content -->
+    <div class="reports-content">
+      <div id="map"></div>
+
+      <!-- View Tabs (Bottom) -->
+      <div class="view-tabs">
+        <button class="tab-btn active" data-view="fpos" onclick="switchView('fpos')">
+          <i class="fa fa-leaf"></i>
+          <span>FPOs</span>
+          <span class="count-badge" id="fposCountBadge"></span>
+        </button>
+        <button class="tab-btn" data-view="agencies" onclick="switchView('agencies')">
+          <i class="fa fa-building"></i>
+          <span>Promoting Agencies</span>
+          <span class="count-badge" id="agenciesCountBadge"></span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Side Panel -->
+  <div id="sidePanel" class="fixed right-0 bg-white shadow-2xl transition-transform duration-300 ease-in-out z-50" style="height: 596px; border-bottom-left-radius: 12px; border-top-left-radius: 12px; width: 420px; top: 54%; transform: translateY(-50%) translateX(100%);">
+    <div class="h-full flex flex-col">
+      <!-- Panel Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-slate-200">
+        <h2 id="panelTitle" class="text-md font-bold" style="color: #004687;">State Details</h2>
+        <button onclick="closeSidePanel()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex px-6" style="border-bottom: 1px solid #c0bebe">
+        <button class="panel-tab active px-4 py-3 text-sm font-semibold transition-colors" data-tab="overview" onclick="switchPanelTab('overview')">
+          Overview
+        </button>
+        <button class="panel-tab px-4 py-3 text-sm font-semibold transition-colors" data-tab="fpos" onclick="switchPanelTab('fpos')">
+          FPOs
+        </button>
+        <button class="panel-tab px-4 py-3 text-sm font-semibold transition-colors" data-tab="agencies" onclick="switchPanelTab('agencies')">
+          Promoting Agencies
+        </button>
+      </div>
+
+      <!-- Panel Content -->
+      <div class="flex-1 overflow-y-auto p-6">
+        <!-- Overview Tab -->
+        <div id="overviewTab" class="panel-content active">
+          <div class="stats-grid" id="statsCards">
+            <!-- Stats cards will be populated here -->
+          </div>
+
+          <!-- View Details Button -->
+          <div class="mt-6">
+            <button onclick="openDetailedReports()" class="btn-primary-brand w-full">
+              <i class="fa fa-chart-line"></i>
+              <span>View Details</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FPOs Tab -->
+        <div id="fposTab" class="panel-content">
+          <div class="space-y-3" id="fposListBody">
+            <!-- FPO cards will be populated here -->
+          </div>
+
+          <!-- View All Button -->
+          <div class="mt-4 pt-4 border-t border-slate-200">
+            <button onclick="openFposInReportsPage()" class="btn-primary-brand w-full">
+              <i class="fa fa-table"></i>
+              <span>View All FPOs</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Agencies Tab -->
+        <div id="agenciesTab" class="panel-content">
+          <div class="space-y-3" id="agenciesListBody">
+            <!-- Agency cards will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Global variables
+  let map = null;
+  let currentView = 'fpos'; // 'fpos' or 'agencies'
+  let selectedYear = null;
+  let availableYears = [];
+  let indiaGeoJSON = null;
+  let stateCentroids = {};
+  let totalFposCount = 0;
+  let totalAgenciesCount = 0;
+  let currentState = null;
+
+  // Wait for mapboxgl to be loaded before initializing
+  function initializeMap() {
+    // Check if mapboxgl is available
+    if (typeof mapboxgl === 'undefined') {
+      console.log('Waiting for mapboxgl to load...');
+      setTimeout(initializeMap, 100);
+      return;
+    }
+
+    // Initialize Mapbox map
+    mapboxgl.accessToken = '{{ mapbox_token }}';
+
+    map = new mapboxgl.Map({
+      container: 'map',
+      center: [78.9629, 20.5937], // Center of India
+      zoom: 4,
+    });
+
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Add fullscreen control
+    map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+
+    // Initialize on load
+    map.on('load', async function() {
+      initTimeline();
+      // Load GeoJSON first, then load state counts
+      await loadIndiaGeoJSON();
+      loadStateCounts();
+    });
+  }
+
+  // Function to get marker color based on category
+  function getCategoryColor(category) {
+    const colors = {
+      'Achievers': '#22c55e',      // Green
+      'Performers': '#f59e0b',     // Amber/Orange
+      'Aspirational': '#ef4444',   // Red
+      'N/A': '#94a3b8'             // Gray
+    };
+    return colors[category] || '#94a3b8';
+  }
+
+  // Function to get category display with description
+  function getCategoryDisplay(category, score) {
+    const displays = {
+      'Achievers': '✓ Achievers (≥70%)',
+      'Performers': '◐ Performers (50-69%)',
+      'Aspirational': '◯ Aspirational (<50%)',
+      'N/A': '- N/A (No Score)'
+    };
+    return displays[category] || 'N/A';
+  }
+
+  // Removed individual FPO marker loading - now only showing state-level aggregated markers
+
+  // Apply filters function - triggers map reload
+  function applyFilters() {
+    loadStateCounts();
+  }
+
+  // Initialize timeline
+  async function initTimeline() {
+    try {
+      // Fetch available years from backend
+      const response = await fetch('/fpo/api/available-years/');
+      const data = await response.json();
+
+      if (data.years && data.years.length > 0) {
+        // Add "All Years" option at the beginning
+        availableYears = ['All Years', ...data.years];
+        selectedYear = 'All Years'; // Default to showing all years
+      } else {
+        // Fallback: no year filter if no years available
+        availableYears = ['All Years'];
+        selectedYear = 'All Years';
+      }
+
+      // Populate timeline with proper horizontal design
+      const timeline = document.getElementById('timelineYears');
+      timeline.innerHTML = '';
+
+      // Add connecting line first (behind all dots)
+      // Line should start from first circle center and end at last circle center
+      if (availableYears.length > 1) {
+        const totalItems = availableYears.length;
+        const leftOffset = (100 / (2 * totalItems));
+        const rightOffset = (100 / (2 * totalItems));
+
+        const line = document.createElement('div');
+        line.style.cssText = `
+          position: absolute;
+          top: 10px;
+          left: ${leftOffset}%;
+          right: ${rightOffset}%;
+          height: 3px;
+          background-color: #cbd5e1;
+          z-index: 0;
+        `;
+        timeline.appendChild(line);
+      }
+
+      availableYears.forEach((year, index) => {
+        const isActive = index === 0; // Make "All Years" active by default
+
+        const yearItem = document.createElement('div');
+        yearItem.className = 'flex flex-col items-center cursor-pointer transition-all duration-300 relative';
+        yearItem.style.cssText = 'flex: 1; z-index: 1;';
+        yearItem.setAttribute('data-year', year);
+        yearItem.onclick = () => selectYear(year);
+
+        yearItem.innerHTML = `
+          <!-- Dot -->
+          <div class="dot flex-shrink-0 rounded-full transition-all duration-300 shadow-md"
+               style="width: 20px;
+                      height: 20px;
+                      background-color: ${isActive ? '#004687' : 'white'};
+                      border: 3px solid ${isActive ? '#004687' : '#cbd5e1'};">
+          </div>
+          <!-- Year text below dot -->
+          <span class="label mt-3 text-sm font-semibold text-center whitespace-nowrap transition-colors duration-300"
+                style="color: ${isActive ? '#004687' : '#64748b'}; font-weight: ${isActive ? '700' : '600'};">
+            ${year}
+          </span>
+        `;
+
+        timeline.appendChild(yearItem);
+      });
+    } catch (error) {
+      console.error('Error fetching available years:', error);
+      // Fallback: no year filter
+      availableYears = ['All Years'];
+      selectedYear = 'All Years';
+    }
+  }
+
+  // Select year
+  function selectYear(year) {
+    selectedYear = year;
+
+    // Update active state for horizontal timeline
+    const timelineItems = document.querySelectorAll('[data-year]');
+    timelineItems.forEach((el) => {
+      const itemYear = el.getAttribute('data-year');
+      const dot = el.querySelector('.dot');
+      const label = el.querySelector('.label');
+
+      if (itemYear === year) {
+        // Active state - larger filled primary colored dot
+        dot.style.width = '20px';
+        dot.style.height = '20px';
+        dot.style.backgroundColor = '#004687';
+        dot.style.border = '3px solid #004687';
+        label.style.color = '#004687';
+        label.style.fontWeight = '700';
+      } else {
+        // Inactive state - smaller white dot with gray border
+        dot.style.width = '20px';
+        dot.style.height = '20px';
+        dot.style.backgroundColor = 'white';
+        dot.style.border = '3px solid #cbd5e1';
+        label.style.color = '#64748b';
+        label.style.fontWeight = '600';
+      }
+    });
+
+    // Reload data
+    loadStateCounts();
+  }
+
+  // Update view button counts
+  function updateViewButtonCounts() {
+    const fposBadge = document.getElementById('fposCountBadge');
+    const agenciesBadge = document.getElementById('agenciesCountBadge');
+
+    if (fposBadge) {
+      fposBadge.textContent = totalFposCount > 0 ? totalFposCount : '';
+    }
+    if (agenciesBadge) {
+      agenciesBadge.textContent = totalAgenciesCount > 0 ? totalAgenciesCount : '';
+    }
+  }
+
+  // Switch view between FPOs and Agencies
+  function switchView(view) {
+    currentView = view;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      if (btn.dataset.view === view) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Reload data with new view
+    loadStateCounts();
+  }
+
+  // Load India GeoJSON and calculate state centroids
+  async function loadIndiaGeoJSON() {
+    try {
+      const response = await fetch('{% static "maps/geojson/india.geojson" %}');
+      indiaGeoJSON = await response.json();
+
+      // Group features by state and calculate centroids
+      const stateFeatures = {};
+
+      indiaGeoJSON.features.forEach(feature => {
+        const stateName = feature.properties.st_nm;
+        if (!stateFeatures[stateName]) {
+          stateFeatures[stateName] = [];
+        }
+        stateFeatures[stateName].push(feature);
+      });
+
+      // Calculate centroid for each state
+      Object.keys(stateFeatures).forEach(stateName => {
+        const features = stateFeatures[stateName];
+
+        // Create a feature collection for this state
+        const stateCollection = {
+          type: 'FeatureCollection',
+          features: features
+        };
+
+        // Calculate the centroid using turf.js
+        const centroid = turf.centroid(stateCollection);
+        stateCentroids[stateName] = centroid.geometry.coordinates;
+      });
+
+      console.log('State centroids calculated:', stateCentroids);
+    } catch (error) {
+      console.error('Error loading India GeoJSON:', error);
+    }
+  }
+
+  // Load state-level aggregated counts
+  function loadStateCounts() {
+    const state = document.getElementById('state').value;
+    const promotingAgency = document.getElementById('promoting_agency').value;
+    const scoreCategory = document.getElementById('score_category').value;
+    const fpoName = document.getElementById('fpo_name').value;
+
+    const params = new URLSearchParams();
+    if (state) params.append('state', state);
+    if (promotingAgency) params.append('promoting_agency', promotingAgency);
+    if (scoreCategory) params.append('score_category', scoreCategory);
+    if (fpoName) params.append('fpo_name', fpoName);
+    // Only add year filter if it's not "All Years"
+    if (selectedYear && selectedYear !== 'All Years') params.append('year', selectedYear);
+    params.append('view', currentView);
+    params.append('aggregated', 'true');
+
+    fetch(`/fpo/api/fpo-state-counts/?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => {
+        // Store total counts
+        totalFposCount = data.total_fpos || 0;
+        totalAgenciesCount = data.total_agencies || 0;
+
+        // Update view buttons with counts
+        updateViewButtonCounts();
+
+        // Clear existing markers
+        document.querySelectorAll('.mapboxgl-marker').forEach(marker => marker.remove());
+
+        // Add state-level count markers using geojson centroids
+        Object.entries(data.states || {}).forEach(([stateName, stateData]) => {
+          const count = stateData.count;
+
+          // Use centroid from geojson instead of hardcoded coordinates
+          const coords = stateCentroids[stateName];
+
+          if (coords && count > 0) {
+            // Create custom pin marker with count inside
+            const el = document.createElement('div');
+            el.className = 'custom-pin-marker';
+
+            // Determine size based on count
+            let pinSize = 48;
+            let circleRadius = 15;
+            let fontSize = 12;
+
+            // Determine pin color based on current view
+            const pinColor = currentView === 'agencies' ? '#E63462' : '#004687';
+
+            const pinWidth = pinSize * 0.9;
+            const pinHeight = pinSize * 1.1;
+            const centerX = pinWidth / 2;
+            const centerY = pinSize * 0.4;
+
+            // Create SVG pin marker: primary pin -> white circle -> primary count
+            el.innerHTML = `
+              <svg width="${pinWidth}" height="${pinHeight}" viewBox="0 0 ${pinWidth} ${pinHeight}" xmlns="http://www.w3.org/2000/svg">
+                <!-- Drop shadow for depth -->
+                <defs>
+                  <filter id="shadow-${count}" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                  </filter>
+                </defs>
+
+                <!-- Primary colored pin shape with wider top -->
+                <path d="M${centerX},${pinHeight - 2}
+                         C${centerX},${pinHeight - 2}
+                         ${pinWidth * 0.1},${centerY + pinSize * 0.3}
+                         ${pinWidth * 0.1},${centerY}
+                         C${pinWidth * 0.1},${centerY * 0.35}
+                         ${centerX * 0.5},${2}
+                         ${centerX},${2}
+                         C${centerX * 1.5},${2}
+                         ${pinWidth * 0.9},${centerY * 0.35}
+                         ${pinWidth * 0.9},${centerY}
+                         C${pinWidth * 0.9},${centerY + pinSize * 0.3}
+                         ${centerX},${pinHeight - 2}
+                         ${centerX},${pinHeight - 2} Z"
+                      fill="${pinColor}"
+                      filter="url(#shadow-${count})"/>
+
+                <!-- White circle inside pin -->
+                <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}"
+                        fill="white"
+                        stroke="${pinColor}"
+                        stroke-width="2"/>
+
+                <!-- Count number in primary color -->
+                <text x="${centerX}" y="${centerY}"
+                      text-anchor="middle"
+                      dominant-baseline="central"
+                      font-size="${fontSize}"
+                      font-weight="700"
+                      font-family="Arial, sans-serif"
+                      fill="${pinColor}">${count}</text>
+              </svg>
+            `;
+
+            // Add marker and click handler
+            const marker = new mapboxgl.Marker(el)
+              .setLngLat([coords[0], coords[1]])
+              .addTo(map);
+
+            // Add click handler to the marker element
+            marker.getElement().addEventListener('click', (e) => {
+              console.log('Marker clicked:', stateName);
+              e.stopPropagation();
+              openSidePanel(stateName, count);
+            });
+
+            // Also add click to the inner element for better click capture
+            el.addEventListener('click', (e) => {
+              console.log('Inner element clicked:', stateName);
+              e.stopPropagation();
+              openSidePanel(stateName, count);
+            });
+          }
+        });
+      })
+      .catch(error => {
+        console.error('Error loading state counts:', error);
+      });
+  }
+
+
+  // Side Panel Functions
+  function openSidePanel(stateName, count) {
+    console.log('Opening side panel for:', stateName, 'with count:', count);
+    currentState = stateName;
+
+    const panel = document.getElementById('sidePanel');
+    const panelTitle = document.getElementById('panelTitle');
+
+    if (!panel || !panelTitle) {
+      console.error('Side panel elements not found');
+      return;
+    }
+
+    const yearText = selectedYear ? ` (${selectedYear})` : ' (All Years)';
+    panelTitle.textContent = `${stateName} - ${count} FPO${count !== 1 ? 's' : ''}${yearText}`;
+    panel.classList.add('open');
+
+    console.log('Panel classes:', panel.className);
+
+    // Load data for the selected state
+    loadStatePanelData(stateName);
+  }
+
+  function closeSidePanel() {
+    document.getElementById('sidePanel').classList.remove('open');
+    currentState = null;
+  }
+
+  function switchPanelTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.panel-tab').forEach(tab => {
+      if (tab.dataset.tab === tabName) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+
+    // Update content panels
+    document.querySelectorAll('.panel-content').forEach(content => {
+      content.classList.remove('active');
+    });
+
+    const activeContent = document.getElementById(`${tabName}Tab`);
+    if (activeContent) {
+      activeContent.classList.add('active');
+    }
+  }
+
+  function loadStatePanelData(stateName) {
+    // Build query parameters with all sidebar filters
+    const params = new URLSearchParams();
+    params.append('state', stateName);
+
+    // Add sidebar filters
+    const promotingAgency = document.getElementById('promoting_agency').value;
+    const scoreCategory = document.getElementById('score_category').value;
+    const fpoName = document.getElementById('fpo_name').value;
+
+    if (promotingAgency) params.append('promoting_agency', promotingAgency);
+    if (scoreCategory) params.append('score_category', scoreCategory);
+    if (fpoName) params.append('fpo_name', fpoName);
+    if (selectedYear && selectedYear !== 'All Years') params.append('year', selectedYear);
+
+    // Load overview stats
+    fetch(`/fpo/api/state-stats/?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => {
+        displayStatsCards(data);
+      })
+      .catch(error => console.error('Error loading state stats:', error));
+
+    // Show loading states
+    const fposContainer = document.getElementById('fposListBody');
+    const agenciesContainer = document.getElementById('agenciesListBody');
+
+    if (fposContainer) {
+      fposContainer.innerHTML = `
+        <div class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-400 mb-3"></div>
+          <div class="text-slate-400 text-sm font-medium">Loading FPOs...</div>
+        </div>
+      `;
+    }
+    if (agenciesContainer) {
+      agenciesContainer.innerHTML = `
+        <div class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-400 mb-3"></div>
+          <div class="text-slate-400 text-sm font-medium">Loading agencies...</div>
+        </div>
+      `;
+    }
+
+    // Load FPOs list with filters
+    fetch(`/fpo/api/fpo-locations/?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => {
+        displayFPOsTable(data.fpos || []);
+      })
+      .catch(error => {
+        console.error('Error loading FPOs:', error);
+        if (fposContainer) {
+          fposContainer.innerHTML = `
+            <div class="text-center py-12">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="text-red-500 text-sm font-medium">Error loading FPOs</div>
+            </div>
+          `;
+        }
+      });
+
+    // Load agencies list with filters
+    fetch(`/fpo/api/state-agencies/?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => {
+        displayAgenciesTable(data.agencies || []);
+      })
+      .catch(error => {
+        console.error('Error loading agencies:', error);
+        if (agenciesContainer) {
+          agenciesContainer.innerHTML = `
+            <div class="text-center py-12">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="text-red-500 text-sm font-medium">Error loading agencies</div>
+            </div>
+          `;
+        }
+      });
+  }
+
+  function displayStatsCards(stats) {
+    console.log('displayStatsCards called with:', stats);
+    const container = document.getElementById('statsCards');
+    if (!container) {
+      console.error('Stats container not found');
+      return;
+    }
+    container.innerHTML = '';
+
+    const statsArray = [
+      {
+        label: 'Total FPOs',
+        value: stats.total_fpos || 0,
+        color: '#1b52ff',
+        iconBg: '#D4E3ED',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>'
+      },
+      {
+        label: 'Promoting Agencies',
+        value: stats.promoting_agencies || 0,
+        color: '#114081',
+        iconBg: '#E0E0E0',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>'
+      },
+      {
+        label: 'States',
+        value: stats.states || 1,
+        color: '#0d5418',
+        iconBg: '#D6EBDA',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>'
+      },
+      {
+        label: 'Districts',
+        value: stats.districts || 0,
+        color: '#c6bc14',
+        iconBg: '#FEE9AE',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
+      },
+      {
+        label: 'Avg Score',
+        value: stats.avg_score ? stats.avg_score.toFixed(1) + '%' : 'N/A',
+        color: '#1b52ff',
+        iconBg: '#D4E3ED',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>'
+      },
+      {
+        label: 'Avg Governance',
+        value: stats.avg_governance ? stats.avg_governance.toFixed(1) + '%' : 'N/A',
+        color: '#114081',
+        iconBg: '#E0E0E0',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>'
+      },
+      {
+        label: 'Avg Operations',
+        value: stats.avg_operations ? stats.avg_operations.toFixed(1) + '%' : 'N/A',
+        color: '#0d5418',
+        iconBg: '#D6EBDA',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+      },
+      {
+        label: 'Avg Systems',
+        value: stats.avg_systems ? stats.avg_systems.toFixed(1) + '%' : 'N/A',
+        color: '#c6bc14',
+        iconBg: '#FEE9AE',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>'
+      },
+      {
+        label: 'Avg Financial',
+        value: stats.avg_financial ? stats.avg_financial.toFixed(1) + '%' : 'N/A',
+        color: '#c9b5f1',
+        iconBg: '#EDE9FE',
+        icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'
+      }
+    ];
+
+    statsArray.forEach((stat, index) => {
+      const card = document.createElement('div');
+      card.className = 'stat-card-small';
+      card.style.cssText = `--card-color: ${stat.color}; animation-delay: ${index * 0.1}s;`;
+      card.innerHTML = `
+        <div class="stat-value">${stat.value}</div>
+        <div class="stat-label">${stat.label}</div>
+      `;
+      container.appendChild(card);
+    });
+    console.log('Created', statsArray.length, 'stat cards');
+  }
+
+  function displayFPOsTable(fpos) {
+    const container = document.getElementById('fposListBody');
+    const countEl = document.getElementById('fposCount');
+
+    if (!container) {
+      console.error('FPOs list container not found');
+      return;
+    }
+    container.innerHTML = '';
+
+    if (countEl) {
+      countEl.textContent = `${fpos.length} FPO${fpos.length !== 1 ? 's' : ''}`;
+    }
+
+    if (fpos.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-16 px-4">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+              <line x1="16" y1="8" x2="2" y2="22"></line>
+              <line x1="17.5" y1="15" x2="9" y2="15"></line>
+            </svg>
+          </div>
+          <h4 class="text-slate-600 font-semibold mb-1">No FPOs Found</h4>
+          <p class="text-slate-400 text-sm">There are no FPOs in this state</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Limit to first 5 FPOs
+    fpos.slice(0, 5).forEach((fpo, index) => {
+      // Get score category color
+      let scoreColor = '#94a3b8';
+      let scoreBg = '#f1f5f9';
+      let categoryLabel = 'N/A';
+      let cardColor = '#94a3b8';
+      let iconBg = '#f1f5f9';
+
+      if (fpo.final_score >= 70) {
+        scoreColor = '#22c55e';
+        scoreBg = '#dcfce7';
+        categoryLabel = 'ACHIEVER';
+        cardColor = '#22c55e';
+        iconBg = '#D6EBDA';
+      } else if (fpo.final_score >= 50) {
+        scoreColor = '#f59e0b';
+        scoreBg = '#fef3c7';
+        categoryLabel = 'PERFORMER';
+        cardColor = '#f59e0b';
+        iconBg = '#FEE9AE';
+      } else if (fpo.final_score > 0) {
+        scoreColor = '#ef4444';
+        scoreBg = '#fee2e2';
+        categoryLabel = 'ASPIRATIONAL';
+        cardColor = '#ef4444';
+        iconBg = '#fee2e2';
+      }
+
+      const card = document.createElement('div');
+      card.className = 'fpo-card';
+      card.style.cssText = `--card-color: ${cardColor}; animation-delay: ${index * 0.05}s;`;
+      card.onclick = () => window.location.href = `/fpo/fpos/${fpo.id}/`;
+
+      card.innerHTML = `
+        <div class="flex items-start gap-4">
+          <div class="card-icon" style="background-color: ${iconBg}; color: ${scoreColor};">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+              <line x1="16" y1="8" x2="2" y2="22"></line>
+              <line x1="17.5" y1="15" x2="9" y2="15"></line>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <h4 class="font-bold text-slate-900 text-base mb-1 truncate">${fpo.name || 'N/A'}</h4>
+                <div class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span class="text-sm text-slate-600 font-medium truncate">${fpo.district || 'N/A'}</span>
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                ${fpo.final_score ? `
+                  <span class="score-badge-large" style="background-color: ${scoreBg}; color: ${scoreColor};">
+                    ${fpo.final_score.toFixed(1)}%
+                  </span>
+                  <span class="category-label-text" style="color: ${scoreColor};">${categoryLabel}</span>
+                ` : '<span class="text-sm text-slate-400 font-medium">No Score</span>'}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function displayAgenciesTable(agencies) {
+    const container = document.getElementById('agenciesListBody');
+    const countEl = document.getElementById('agenciesCount');
+
+    if (!container) {
+      console.error('Agencies list container not found');
+      return;
+    }
+    container.innerHTML = '';
+
+    if (countEl) {
+      countEl.textContent = `${agencies.length} ${agencies.length !== 1 ? 'Agencies' : 'Agency'}`;
+    }
+
+    if (agencies.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-16 px-4">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <h4 class="text-slate-600 font-semibold mb-1">No Agencies Found</h4>
+          <p class="text-slate-400 text-sm">There are no promoting agencies in this state</p>
+        </div>
+      `;
+      return;
+    }
+
+    agencies.forEach((agency, index) => {
+      const card = document.createElement('div');
+      card.className = 'agency-card';
+      card.style.cssText = `--card-color: #114081; animation-delay: ${index * 0.05}s;`;
+
+      const fpoCount = agency.fpo_count || 0;
+
+      card.innerHTML = `
+        <div class="flex items-start gap-4">
+          <div class="card-icon" style="background-color: #E0E0E0; color: #114081;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <h4 class="font-bold text-slate-900 text-base mb-2 truncate">${agency.name || 'N/A'}</h4>
+                <div class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                    <line x1="16" y1="8" x2="2" y2="22"></line>
+                    <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                  </svg>
+                  <span class="text-sm text-slate-600 font-medium">${fpoCount} FPO${fpoCount !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <div class="score-badge-large" style="background-color: #E0E0E0; color: #114081;">
+                  ${fpoCount}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  // Function to open detailed reports page with current filters
+  function openDetailedReports() {
+    // Build URL with current filter values
+    const params = new URLSearchParams();
+
+    // Get all filter values from sidebar
+    const stateSelect = document.getElementById('state');
+    const promotingAgencySelect = document.getElementById('promoting_agency');
+    const scoreCategorySelect = document.getElementById('score_category');
+    const fpoNameSelect = document.getElementById('fpo_name');
+
+    // Add state filter (use sidebar state or current panel state)
+    const stateValue = stateSelect.value || currentState;
+    if (stateValue) {
+      params.append('state', stateValue);
+    }
+
+    // Add promoting agency filter
+    const promotingAgencyValue = promotingAgencySelect.value;
+    if (promotingAgencyValue) {
+      params.append('promoting_agency', promotingAgencyValue);
+    }
+
+    // Add score category filter
+    const scoreCategoryValue = scoreCategorySelect.value;
+    if (scoreCategoryValue) {
+      params.append('score_category', scoreCategoryValue);
+    }
+
+    // Add FPO name filter
+    const fpoNameValue = fpoNameSelect.value;
+    if (fpoNameValue) {
+      params.append('fpo_name', fpoNameValue);
+    }
+
+    // Add year filter if it's not "All Years"
+    if (selectedYear && selectedYear !== 'All Years') {
+      params.append('financial_year', selectedYear);
+    }
+
+    // Build the full URL
+    const baseUrl = '/fpo/reports-v2/';
+    const fullUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+
+    // Open in new tab
+    window.open(fullUrl, '_blank');
+  }
+
+  // Function to open FPOs in reports page with filters
+  function openFposInReportsPage() {
+    // Build URL with current filter values
+    const params = new URLSearchParams();
+
+    // Get all filter values from sidebar
+    const stateSelect = document.getElementById('state');
+    const promotingAgencySelect = document.getElementById('promoting_agency');
+    const scoreCategorySelect = document.getElementById('score_category');
+    const fpoNameSelect = document.getElementById('fpo_name');
+
+    // Add state filter (use sidebar state or current panel state)
+    const stateValue = stateSelect.value || currentState;
+    if (stateValue) {
+      params.append('state', stateValue);
+    }
+
+    // Add promoting agency filter
+    const promotingAgencyValue = promotingAgencySelect.value;
+    if (promotingAgencyValue) {
+      params.append('promoting_agency', promotingAgencyValue);
+    }
+
+    // Add score category filter
+    const scoreCategoryValue = scoreCategorySelect.value;
+    if (scoreCategoryValue) {
+      params.append('score_category', scoreCategoryValue);
+    }
+
+    // Add FPO name filter
+    const fpoNameValue = fpoNameSelect.value;
+    if (fpoNameValue) {
+      params.append('fpo_name', fpoNameValue);
+    }
+
+    // Add year filter if it's not "All Years"
+    if (selectedYear && selectedYear !== 'All Years') {
+      params.append('financial_year', selectedYear);
+    }
+
+    // Add parameter to open FPOs table by default
+    params.append('open_table', 'true');
+
+    // Build the full URL
+    const baseUrl = '/fpo/reports-v2/';
+    const fullUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+
+    // Open in new tab
+    window.open(fullUrl, '_blank');
+  }
+
+  // Start map initialization
+  initializeMap();
+
+  // Sidebar controller for Alpine.js
+  function sidebarController() {
+    return {
+      sidebarOpen: window.innerWidth >= 1024,
+      sidebarCollapsed: false,
+      isDesktop: window.innerWidth >= 1024,
+      resizeTimeout: null,
+
+      init() {
+        // Restore collapsed state from localStorage
+        const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
+        if (savedCollapsedState !== null) {
+          this.sidebarCollapsed = JSON.parse(savedCollapsedState);
+        }
+
+        // Ensure sidebar is always open on desktop
+        if (this.isDesktop) {
+          this.sidebarOpen = true;
+        }
+
+        // Debounced resize handler
+        window.addEventListener('resize', () => {
+          clearTimeout(this.resizeTimeout);
+          this.resizeTimeout = setTimeout(() => {
+            const wasDesktop = this.isDesktop;
+            this.isDesktop = window.innerWidth >= 1024;
+
+            // Only change sidebar state when crossing desktop/mobile boundary
+            if (wasDesktop !== this.isDesktop) {
+              this.sidebarOpen = this.isDesktop;
+              // Reset collapsed state on mobile
+              if (!this.isDesktop) {
+                this.sidebarCollapsed = false;
+              }
+            }
+
+            // Ensure sidebar is always open on desktop
+            if (this.isDesktop) {
+              this.sidebarOpen = true;
+            }
+          }, 100);
+        });
+      },
+
+      toggleSidebar() {
+        // On desktop, don't allow closing sidebar - only collapsing
+        if (this.isDesktop) {
+          return; // Desktop users should use toggleCollapse instead
+        } else {
+          this.sidebarOpen = !this.sidebarOpen;
+        }
+      },
+
+      toggleCollapse() {
+        // Only available on desktop
+        if (this.isDesktop) {
+          this.sidebarCollapsed = !this.sidebarCollapsed;
+          // Save state to localStorage
+          localStorage.setItem('sidebarCollapsed', JSON.stringify(this.sidebarCollapsed));
+        }
+      }
+    };
+  }
+</script>
+
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}

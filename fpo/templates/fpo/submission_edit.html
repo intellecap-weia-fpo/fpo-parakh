@@ -1,0 +1,402 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+{% load custom_filters %}
+
+{% block title %}FPO Admin - Edit Submission{% endblock %}
+
+{% block meta_description %}FPO Edit Yearly Submission Details{% endblock %}
+
+{% block page_title_block %}
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="mt-2 text-muted-foreground text-2xl">{% trans "Edit Yearly Submission Details" %}</p>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+    <a href="{% url 'fpo:submission_detail' fpo.pk submission.pk %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-arrow-left w-4 h-4 mr-2"></i>
+        {% trans "Cancel Edit" %}
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+select.form-control {
+    padding-right: 2.5rem;
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+</style>
+{% endblock %}
+
+{% block main_content %}
+
+<div class="space-y-6">
+    <!-- Submission Status -->
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-card-foreground">{% trans "Submission Status" %}</h3>
+                <p class="text-sm text-muted-foreground mt-1">
+                    {% trans "Current status:" %} <span class="font-medium">{{ submission.get_status_display }}</span>
+                </p>
+            </div>
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium 
+                {% if submission.status == 'approved' %}bg-green-100 text-green-800
+                {% elif submission.status == 'submitted' %}bg-blue-100 text-blue-800
+                {% elif submission.status == 'under_review' %}bg-yellow-100 text-yellow-800
+                {% elif submission.status == 'rejected' %}bg-red-100 text-red-800
+                {% elif submission.status == 'revision_required' %}bg-orange-100 text-orange-800
+                {% else %}bg-gray-100 text-gray-800 {% endif %}">
+                {{ submission.get_status_display }}
+            </span>
+        </div>
+    </div>
+
+    <form method="post" class="space-y-6" x-data="{
+        directors: 0,
+        addDirector() {
+            this.directors++;
+            this.updateTotalForms();
+        },
+        removeDirector(index) {
+            this.directors--;
+            this.updateTotalForms();
+            // Mark the form for deletion
+            const deleteInput = document.querySelector(`input[name='board_directors-${index}-DELETE']`);
+            if (deleteInput) {
+                deleteInput.value = 'true';
+            }
+        },
+        updateTotalForms() {
+            const totalFormsInput = document.getElementById('id_board_directors-TOTAL_FORMS');
+            if (totalFormsInput) {
+                totalFormsInput.value = this.directors;
+            }
+        },
+        init() {
+            // Apply form-control styling to all form elements
+            this.styleFormElements();
+            
+            // Handle Turbo events
+            this.setupTurboHandlers();
+            
+            // Initialize total forms count
+            this.updateTotalForms();
+        },
+        styleFormElements() {
+            const formElements = document.querySelectorAll('input, select, textarea');
+            formElements.forEach(element => {
+                if (!element.classList.contains('form-control')) {
+                    element.classList.add('form-control');
+                }
+            });
+        },
+        setupTurboHandlers() {
+            document.addEventListener('turbo:load', () => this.styleFormElements());
+            document.addEventListener('turbo:frame-render', () => this.styleFormElements());
+        }
+    }">
+        {% csrf_token %}
+        
+        <!-- FPO Details Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "FPO Details" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for field in fpo_details_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Governance Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Governance" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in governance_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- CEO Profile Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "CEO Profile" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in ceo_profile_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {% if 'financial_details_form' in field.form.prefix and field.name|slice:":13" == 'current_year_' or field.name|slice:":14" == 'previous_year_' or field.name|slice:":15" == 'two_years_back_' %}
+                            {{ field.name|year_specific_label:submission.financial_year }}
+                        {% else %}
+                            {{ field.label }}
+                        {% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Board Directors Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Board Directors" %}</h3>
+            
+            {{ board_directors_formset.management_form }}
+            <div id="board-directors-container">
+                <template x-for="i in directors" :key="i">
+                    <div class="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-medium text-card-foreground">{% trans "Director" %} <span x-text="i"></span></h4>
+                            <button type="button" @click="removeDirector(i-1)" class="text-red-500 hover:text-red-700 text-sm">
+                                <i class="fa fa-trash mr-1"></i> {% trans "Remove" %}
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">
+                                {% trans "Name" %}
+                            </label>
+                            <input type="text" :name="'board_directors-' + (i-1) + '-name'" class="form-control">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">
+                                {% trans "Educational Qualification" %}
+                            </label>
+                            <input type="text" :name="'board_directors-' + (i-1) + '-educational_qualification'" class="form-control">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">
+                                {% trans "Type of Experience" %}
+                            </label>
+                            <select :name="'board_directors-' + (i-1) + '-type_of_experience'" class="form-control">
+                                <option value="">{% trans "Select experience type" %}</option>
+                                <option value="farmer_owned_enterprises">{% trans "Farmer-owned enterprises" %}</option>
+                                <option value="agricultural_cooperatives">{% trans "Agricultural Cooperatives/Farmer producer organizations" %}</option>
+                                <option value="ngo_agriculture">{% trans "Non-governmental organization focused on agricultural sector" %}</option>
+                                <option value="farm_management">{% trans "Farm Management" %}</option>
+                                <option value="village_councils">{% trans "Village councils" %}</option>
+                                <option value="self_help_groups">{% trans "Self-help groups" %}</option>
+                                <option value="government_agriculture">{% trans "Governmental departments of agricultural sector" %}</option>
+                                <option value="any_other">{% trans "Any other" %}</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">
+                                {% trans "Other Experience" %}
+                            </label>
+                            <input type="text" :name="'board_directors-' + (i-1) + '-other_experience'" class="form-control">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">
+                                {% trans "Total Years of Experience" %}
+                            </label>
+                            <input type="number" :name="'board_directors-' + (i-1) + '-total_years_of_experience'" class="form-control">
+                        </div>
+                        
+                        <input type="hidden" :name="'board_directors-' + (i-1) + '-id'" value="">
+                        <input type="hidden" :name="'board_directors-' + (i-1) + '-DELETE'" value="false">
+                    </div>
+                </template>
+            </div>
+            
+            <button type="button" @click="addDirector()" class="mt-4 inline-flex items-center px-3 py-2 border border-border rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent">
+                <i class="fa fa-plus mr-2"></i>
+                {% trans "Add Director" %}
+            </button>
+        </div>
+
+        <!-- Business Operations Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Business Operations" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in business_operations_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Compliance Details Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Compliance Details" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in compliance_details_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-card-foreground mb-2">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Processes & Systems Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Processes & Systems" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in processes_systems_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sustainable Activities Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Sustainable Activities" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in sustainable_activities_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Financial Details Section -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Financial Details" %}</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for field in financial_details_form %}
+                <div>
+                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-muted-foreground mb-1">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                    <p class="text-sm text-destructive mt-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                    {% if field.help_text %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ field.help_text }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <div class="flex flex-col sm:flex-row gap-3 justify-end">
+                <a href="{% url 'fpo:submission_detail' fpo.pk submission.pk %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border">
+                    {% trans "Cancel" %}
+                </a>
+                <button type="submit" name="action" value="save" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">
+                    <i class="fa fa-save mr-2"></i>
+                    {% trans "Save Changes" %}
+                </button>
+                {% if submission.status == 'draft' or submission.status == 'revision_required' %}
+                <button type="submit" name="action" value="submit" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-green-foreground bg-green-600 hover:bg-green-700">
+                    <i class="fa fa-paper-plane mr-2"></i>
+                    {% trans "Submit for Review" %}
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Alpine.js is already included in base template
+// The form styling and directors management is now handled inline with Alpine.js
+</script>
+{% endblock %}

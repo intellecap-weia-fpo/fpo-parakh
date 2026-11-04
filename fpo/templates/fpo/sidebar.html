@@ -1,0 +1,111 @@
+{% load i18n %}
+
+<div x-show="sidebarOpen"
+     x-cloak
+     class="fixed inset-0 top-16 bg-slate-950/35 backdrop-blur-sm z-40 lg:hidden"
+     @click="toggleSidebar()"></div>
+
+<aside id="{{ sidebar_id|default:'sidebar-content' }}"
+       class="fpo-sidebar fixed top-16 bottom-0 left-0 z-40 flex flex-col"
+       :class="sidebarCollapsed ? 'w-16' : 'w-full sm:w-64 lg:w-72'"
+       x-show="sidebarOpen"
+       x-transition:enter="transition-transform duration-200 ease-out"
+       x-transition:enter-start="-translate-x-full"
+       x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform duration-150 ease-in"
+       x-transition:leave-start="translate-x-0"
+       x-transition:leave-end="-translate-x-full"
+       style="display: flex">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 lg:hidden">
+    <strong class="text-sm text-slate-800">{% trans "FPO Navigation" %}</strong>
+    <button type="button" @click="toggleSidebar()" class="fpo-icon-button" aria-label="{% trans 'Close navigation' %}">
+      <i class="fa fa-times"></i>
+    </button>
+  </div>
+
+  <div class="flex-1 min-h-0 overflow-y-auto">
+  <nav class="px-3 py-5" aria-label="{% trans 'FPO navigation' %}">
+    <h2 id="admin-nav-heading" x-show="!sidebarCollapsed" class="fpo-nav-heading">{% trans "Admin" %}</h2>
+    <ul class="space-y-1.5" aria-label="{% trans 'Admin' %}">
+      <li>
+        <a href="{% url 'fpo:fpos_list' %}"
+           class="fpo-nav-link {% if '/fpo/fpos/' in request.path %}is-active{% endif %}"
+           :class="sidebarCollapsed ? 'is-collapsed' : ''"
+           :title="sidebarCollapsed ? '{% trans 'Manage FPO' %}' : ''">
+          <i class="fa fa-database" aria-hidden="true"></i>
+          <span x-show="!sidebarCollapsed">{% trans "Manage FPO" %}</span>
+        </a>
+      </li>
+
+      {% if request.user.is_staff or request.user.is_superuser %}
+        <li>
+          <a href="{% url 'fpo:verification_requests' %}"
+             class="fpo-nav-link {% if '/fpo/verifications/' in request.path %}is-active{% endif %}"
+             :class="sidebarCollapsed ? 'is-collapsed' : ''"
+             :title="sidebarCollapsed ? '{% trans 'FPO Verifications' %}' : ''">
+            <i class="fa fa-check-circle" aria-hidden="true"></i>
+            <span x-show="!sidebarCollapsed">{% trans "FPO Verifications" %}</span>
+          </a>
+        </li>
+      {% endif %}
+
+      <li>
+        <a href="{% url 'fpo:user_management' %}"
+           class="fpo-nav-link {% if '/fpo/user-management/' in request.path %}is-active{% endif %}"
+           :class="sidebarCollapsed ? 'is-collapsed' : ''"
+           :title="sidebarCollapsed ? '{% trans 'User Management' %}' : ''">
+          <i class="fa fa-users" aria-hidden="true"></i>
+          <span x-show="!sidebarCollapsed">{% trans "User Management" %}</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="fpo-nav-group">
+      <h2 x-show="!sidebarCollapsed" class="fpo-nav-heading">{% trans "Analytics" %}</h2>
+      <ul class="space-y-1.5" aria-label="{% trans 'Analytics' %}">
+        <li>
+          <a href="{% url 'fpo:reports_v2' %}"
+             class="fpo-nav-link {% if request.path == '/fpo/reports-v2/' %}is-active{% endif %}"
+             :class="sidebarCollapsed ? 'is-collapsed' : ''"
+             :title="sidebarCollapsed ? '{% trans 'Reports' %}' : ''"
+             {% if request.path == '/fpo/reports-v2/' %}aria-current="page"{% endif %}>
+            <i class="fa fa-line-chart" aria-hidden="true"></i>
+            <span x-show="!sidebarCollapsed">{% trans "Reports" %}</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'fpo:reports_map' %}"
+             class="fpo-nav-link {% if request.path == '/fpo/reports-map/' %}is-active{% endif %}"
+             :class="sidebarCollapsed ? 'is-collapsed' : ''"
+             :title="sidebarCollapsed ? '{% trans 'FPO Map' %}' : ''"
+             {% if request.path == '/fpo/reports-map/' %}aria-current="page"{% endif %}>
+            <i class="fa fa-map-marker" aria-hidden="true"></i>
+            <span x-show="!sidebarCollapsed">{% trans "FPO Map" %}</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <ul class="fpo-nav-group space-y-1.5" aria-label="{% trans 'Resources' %}">
+      <li>
+        <a href="{% url 'fpo:quick_guide' %}"
+           class="fpo-nav-link {% if request.path == '/fpo/quick-guide/' %}is-active{% endif %}"
+           :class="sidebarCollapsed ? 'is-collapsed' : ''"
+           :title="sidebarCollapsed ? '{% trans 'Quick Guide' %}' : ''">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+          <span x-show="!sidebarCollapsed">{% trans "Quick Guide" %}</span>
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+  {% if sidebar_filters_template %}
+    {% include sidebar_filters_template %}
+  {% endif %}
+  </div>
+
+  <div x-show="!sidebarCollapsed" class="fpo-sidebar-meta">
+    <span>{% trans "Data as of" %}</span>
+    <strong>{% now "M Y" %}</strong>
+  </div>
+</aside>

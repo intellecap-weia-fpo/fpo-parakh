@@ -1,0 +1,74 @@
+{
+  "title": "FPO Details",
+  "description": "Schema for FPO (Farmer Producer Organization) Profile Details",
+  "type": "object",
+  "properties": {
+    "nameOfProducerOrganization": {
+      "type": "string",
+      "title": "Name of the Producer Organization",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "registeredAddress": {
+      "type": "string",
+      "title": "Registered Address of the FPO",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "district": {
+      "type": "string",
+      "title": "District",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "state": {
+      "type": "string",
+      "title": "State",
+      "enum": ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"]
+    },
+    "typeOfProducerOrganization": {
+      "type": "string",
+      "title": "Type of the producer organization (Legal structure)",
+      "enum": ["Co-operative", "Producer Company", "Non Profit Company", "Trust", "Section -8 Company"]
+    },
+    "dateOfIncorporation": {
+      "type": "string",
+      "title": "Date of incorporation",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "dateOfCommencement": {
+      "type": "string",
+      "title": "Date of commencement of operations",
+      "pattern": "^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$"
+    },
+    "ageOfFpoYears": {
+      "type": "number",
+      "title": "Age of the FPO (in Years)",
+      "minimum": 0,
+      "maximum": 150
+    },
+    "typeOfFpo": {
+      "type": "string",
+      "title": "Type of FPO",
+      "enum": ["Dealing in inputs or output", "Dealing in input and output", "Dealing in inputs,output and processing with less than 50% capacity utilization", "Dealing in inputs,output and processing with more than 50% capacity utilization"]
+    },
+    "sizeOfFpoFy2324": {"type": "integer", "minimum": 0},
+    "sizeOfFpoFy2223": {"type": "integer", "minimum": 0},
+    "sizeOfFpoFy2122": {"type": "integer", "minimum": 0},
+    "farmersTransacted": {"type": "integer", "minimum": 0},
+    "womenMembers": {"type": "integer", "minimum": 0},
+    "targetSizeOfFpo": {"type": "integer", "minimum": 0},
+    "dealsThroughPgsFigs": {"type": "boolean"},
+    "numPgsFigs": {"type": "integer", "minimum": 0},
+    "supportedByPromotingAgency": {"type": "boolean"},
+    "promotingAgencyName": {"type": "string"},
+    "typeOfPromotingAgency": {
+      "type": "string",
+      "enum": ["Government Organization", "NGO", "Trusts", "Cooperative", "Wings/Development Foundation of Corporates", "State Govt. Departments", "KVKs", "Farmer Federations", "Commodity Boards", "Others"]
+    },
+    "receivedGrants": {"type": "boolean"},
+    "grantMakingOrganization": {"type": "string"}
+  },
+  "required": ["nameOfProducerOrganization", "registeredAddress", "district", "state", "typeOfProducerOrganization", "dateOfIncorporation", "dateOfCommencement", "ageOfFpoYears", "typeOfFpo"],
+  "additionalProperties": false
+}

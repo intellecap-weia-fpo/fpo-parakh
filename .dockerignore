@@ -1,0 +1,8 @@
+.git
+.idea
+.venv
+.yarn
+media
+# Include source assets so collectstatic can package the current admin design.
+staticfiles
+node_modules

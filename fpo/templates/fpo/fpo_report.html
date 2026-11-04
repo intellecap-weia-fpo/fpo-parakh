@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ fpo_details.name }} - Organizational Score Report</title>
+    {% load humanize %}
+    {% load custom_filters %}
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: #2c3e50;
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .content {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .basic-details {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: flex-start;
+            page-break-inside: avoid;
+        }
+
+        .company-info {
+            flex: 2;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .metrics-sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 100%;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #3498db, #5dade2);
+            color: white;
+            padding: 15px 15px;
+            border-radius: 12px;
+            text-align: center;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 1;
+            word-break: break-all;
+            /* Add this */
+            white-space: normal;
+            /* Add this */
+        }
+
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .metric-change {
+            font-size: 11px;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .overall-score {
+            background: linear-gradient(135deg, #3498db, #5dade2);
+            color: white;
+            padding: 35px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin: 25px 0 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .overall-title {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+
+        .overall-score-value {
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .theme-scores {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+
+        .theme-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .theme-title {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .theme-score {
+            font-size: 28px;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .theme-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+
+        .theme-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .theme-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .theme-score-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .company-name span:first-child {
+            flex-shrink: 1;
+            min-width: 200px;
+        }
+
+        .green-badge,
+        .fpo-category {
+            background: #27ae60;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            width: 80px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .fpo-category {
+            background: #3498db;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 600;
+            word-wrap: break-word;
+            word-break: break-all;
+            /* Force breaking for PDF */
+            white-space: normal;
+            max-width: 100%;
+            line-height: 1.3;
+            /* Reduce line height for better fit */
+        }
+
+        .indicators-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .indicators-container.single-column {
+            grid-template-columns: 1fr;
+        }
+
+        .indicators-column {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .column-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .hits-header {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .misses-header {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .indicator-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+            line-height: 1.3;
+            gap: 16px;
+            /* Increased gap for better spacing before indicator */
+        }
+
+        .indicator-item:last-child {
+            border-bottom: none;
+        }
+
+        .indicator-value {
+            flex: 1;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+
+        .indicator-icon {
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            flex-shrink: 0;
+            aspect-ratio: 1;
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            background-color: transparent;
+        }
+
+        .indicator-icon.positive {
+            background: #27ae60;
+            color: white;
+        }
+
+        .indicator-icon.negative {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ fpo_details.name }}</h1>
+        </div>
+
+        <div class="content">
+            <!-- Basic Details Section -->
+            <div class="basic-details">
+                <div class="company-info">
+                    <div class="company-name">
+                        <span style="word-break: break-word;">{{ fpo_details.name }}</span>
+                        <span class="green-badge">Green FPO</span>
+                        <span class="fpo-category">{{ category|default:"Performer" }}</span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Location</div>
+                            <div class="info-value">{{ fpo_details.location|default:"N/A"|wordwrap:30|linebreaksbr }}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Crops/Inputs</div>
+                            <div class="info-value">{{
+                                fpo_details.crops|default:"-"|comma_to_space|wordwrap:25|linebreaksbr }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Total Membership</div>
+                            <div class="info-value">{{ fpo_details.size|floatformat:0|intcomma }} members</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Active Membership</div>
+                            <div class="info-value">{{ active_membership_pct|default:"-" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Quantity procured</div>
+                            <div class="info-value">{{ fpo_details.quantity_procured|floatformat:0|default:"-" }} MT
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Promoting Agency</div>
+                            <div class="info-value">
+                                {{ fpo_details.promoting_agency_name|default:"N/A"|wordwrap:25|linebreaksbr }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-sidebar">
+                    {% for indicator in indicators.financial %}
+                    {% if indicator.name == "Revenue per Member" %}
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            {% with revenue_match=indicator.value|cut:"Revenue per member is "|cut:"Revenue per active member is "|cut:"INR " %}
+                            INR {{ revenue_match|cut:","|floatformat:0|intcomma }}
+                            {% endwith %}
+                        </div>
+                        <div class="metric-label">Revenue per active member</div>
+                        <div class="metric-change">FY {{ fpo_details.financial_year}}</div>
+                    </div>
+                    {% endif %}
+                    {% if indicator.name == "Net Profit Margin" %}
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            {% with profit_match=indicator.value|cut:"Net profit margin is "|cut:"Net profit margin(%) is " %}
+                            {{ profit_match }}%
+                            {% endwith %}
+                        </div>
+                        <div class="metric-label">Net Profit Margin</div>
+                        <div class="metric-change">FY {{ fpo_details.financial_year}}</div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            INR {{ fpo_details.total_revenue|indian_currency }}
+                        </div>
+                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-change">FY {{fpo_details.financial_year}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overall Score -->
+            <div class="overall-score">
+                <div class="overall-title">Overall Organizational Score</div>
+                <div class="overall-score-value">{{ total_score|floatformat:0 }}%</div>
+            </div>
+
+            <!-- Theme-wise Scores -->
+            <div class="theme-scores">
+                <div class="theme-card">
+                    <div class="theme-title">Governance</div>
+                    <div class="theme-score">{{ section_scores.governance|floatformat:0 }}%</div>
+                </div>
+                <div class="theme-card">
+                    <div class="theme-title">Business & Operations</div>
+                    <div class="theme-score">{{ section_scores.business|floatformat:0 }}%</div>
+                </div>
+                <div class="theme-card">
+                    <div class="theme-title">Process & Systems</div>
+                    <div class="theme-score">{{ section_scores.process|floatformat:0 }}%</div>
+                </div>
+                <div class="theme-card">
+                    <div class="theme-title">Financial Performance</div>
+                    <div class="theme-score">{{ section_scores.financial|floatformat:0 }}%</div>
+                </div>
+            </div>
+
+            <!-- Theme Sections -->
+            {% for section_name, section_data in indicators.items %}
+            <div class="theme-section">
+                <div class="theme-header">
+                    <div class="theme-name">
+                        {% if section_name == "governance" %}Governance
+                        {% elif section_name == "business" %}Business & Operations
+                        {% elif section_name == "process" %}Process & Systems
+                        {% elif section_name == "financial" %}Financial Performance
+                        {% endif %}
+                    </div>
+                    <div class="theme-score-header">
+                        {% if section_name == "governance" %}{{ section_scores.governance|floatformat:0 }}%
+                        {% elif section_name == "business" %}{{ section_scores.business|floatformat:0 }}%
+                        {% elif section_name == "process" %}{{ section_scores.process|floatformat:0 }}%
+                        {% elif section_name == "financial" %}{{ section_scores.financial|floatformat:0 }}%
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Completely rewritten hits/misses logic using pure Django template syntax -->
+                {% regroup section_data by status as status_groups %}
+
+                <!-- Create consolidated lists for hits and misses -->
+                {% comment %} Collect all hits into one list and all misses into another {% endcomment %}
+
+                <!-- Check if we have both hits and misses by looking for both statuses -->
+                {% with has_hits=False has_misses=False %}
+                {% for status_group in status_groups %}
+                {% if status_group.grouper == "Hit" %}
+                {% with has_hits=True %}
+                {% endwith %}
+                {% elif status_group.grouper == "Miss" %}
+                {% with has_misses=True %}
+                {% endwith %}
+                {% endif %}
+                {% endfor %}
+
+                <!-- Determine layout based on what we have -->
+                {% comment %} Check if both hits and misses exist by counting unique statuses {% endcomment %}
+                {% with unique_statuses=status_groups|length %}
+                {% if unique_statuses == 2 or section_data|length > 1 %}
+                <!-- Check if we actually have both hits and misses -->
+                {% with all_hits=section_data|dictsort:"status" %}
+                {% regroup all_hits by status as consolidated_groups %}
+                {% if consolidated_groups|length == 2 %}
+                <!-- Two column layout - both hits and misses exist -->
+                <div class="indicators-container">
+                    <!-- Hits column -->
+                    <div class="indicators-column">
+                        <div class="column-header hits-header">Hits</div>
+                        {% for indicator in section_data %}
+                        {% if indicator.status == "Hit" %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon positive">✓</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Misses column -->
+                    <div class="indicators-column">
+                        <div class="column-header misses-header">Misses</div>
+                        {% for indicator in section_data %}
+                        {% if indicator.status == "Miss" %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon negative">✗</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <!-- Single column layout - only hits or only misses -->
+                <div class="indicators-container single-column">
+                    <div class="indicators-column">
+                        {% for indicator in section_data %}
+                        {% if indicator.status == "Hit" %}
+                        {% if forloop.first %}
+                        <div class="column-header hits-header">Hits</div>
+                        {% endif %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon positive">✓</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% elif indicator.status == "Miss" %}
+                        {% if forloop.first %}
+                        <div class="column-header misses-header">Misses</div>
+                        {% endif %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon negative">✗</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% else %}
+                <!-- Single column layout - only hits or only misses -->
+                <div class="indicators-container single-column">
+                    {% for status_group in status_groups %}
+                    <div class="indicators-column">
+                        {% if status_group.grouper == "Hit" %}
+                        <div class="column-header hits-header">Hits</div>
+                        {% for indicator in status_group.list %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon positive">✓</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% endfor %}
+                        {% elif status_group.grouper == "Miss" %}
+                        <div class="column-header misses-header">Misses</div>
+                        {% for indicator in status_group.list %}
+                        <div class="indicator-item">
+                            <span class="indicator-icon negative">✗</span>
+                            <span class="indicator-value">{{ indicator.value }}</span>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% endwith %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+
+</html>

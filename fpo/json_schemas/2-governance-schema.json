@@ -1,0 +1,54 @@
+{
+  "title": "Governance",
+  "description": "Schema for FPO Governance and Management information",
+  "type": "object",
+  "properties": {
+    "annualGeneralBodyMeetings": {
+      "type": "integer",
+      "title": "How often Annual general body meeting is conducted (Annually)",
+      "minimum": 0,
+      "maximum": 12
+    },
+    "bodMeetingsLastFinancialYear": {
+      "type": "integer",
+      "title": "How often were BOD meetings conducted in last financial year?",
+      "minimum": 0,
+      "maximum": 365
+    },
+    "minutesMaintenance": {
+      "type": "string",
+      "title": "Maintenance of minutes of the meetings",
+      "enum": [
+        "Minutes of the meeting are detailed with the decisions taken being recorded with proper compliance",
+        "Minutes of the meeting are detailed with decision taken being recorded but not recorded on MCA",
+        "Minutes of the meeting are sketchy in quality",
+        "Minutes of the meeting are not maintained"
+      ]
+    },
+    "numBods": {
+      "type": "integer",
+      "title": "Number of BODs",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "numWomenBods": {
+      "type": "integer",
+      "title": "Number of Women BODs",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "secondLineManagement": {
+      "type": "string",
+      "title": "Second Line of Management",
+      "enum": [
+        "CEO accompanied by accounts team & atleast 2 divisional manager (eg: marketing, sales, procurement)",
+        "CEO accompanied by accounts team & one divisional manager (eg: marketing, sales, procurement)",
+        "No second line, CEO accompanied by accounts team",
+        "No second line, only CEO",
+        "Currently no CEO"
+      ]
+    }
+  },
+  "required": ["annualGeneralBodyMeetings", "bodMeetingsLastFinancialYear", "minutesMaintenance", "numBods", "numWomenBods"],
+  "additionalProperties": false
+}

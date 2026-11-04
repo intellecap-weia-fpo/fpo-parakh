@@ -1,0 +1,60 @@
+{
+  "title": "Sustainable Activities",
+  "description": "Schema for FPO sustainable activities information",
+  "type": "object",
+  "properties": {
+    "climateResilientSeedsToFarmers": {
+      "type": "boolean",
+      "title": "Climate resilient seeds to farmers"
+    },
+    "organicBioManureFertilizersToFarmers": {
+      "type": "boolean",
+      "title": "Organic bio manure fertilizers to farmers"
+    },
+    "dripSprinklerIrrigationToFarmers": {
+      "type": "boolean",
+      "title": "Drip/sprinkler irrigation to farmers"
+    },
+    "weatherAdvisoriesToFarmers": {
+      "type": "boolean",
+      "title": "Weather advisories to farmers"
+    },
+    "pestDiseaseAlertsToFarmers": {
+      "type": "boolean",
+      "title": "Pest disease alerts to farmers"
+    },
+    "supplyingAgriculturalResidueToBioCngGasPlants": {
+      "type": "boolean",
+      "title": "Supplying agricultural residue to bio CNG gas plants"
+    },
+    "trainingOnOrganicFarmingToFarmers": {
+      "type": "boolean",
+      "title": "Training on organic farming to farmers"
+    },
+    "solarPanelsAtFpoLevel": {
+      "type": "boolean",
+      "title": "Solar panels at FPO level"
+    },
+    "establishmentOfRainwaterHarvestingAtFpoLevel": {
+      "type": "boolean",
+      "title": "Establishment of rainwater harvesting at FPO level"
+    },
+    "compostingUnitsAtFpoLevel": {
+      "type": "boolean",
+      "title": "Composting units at FPO level"
+    }
+  },
+  "required": [
+    "climateResilientSeedsToFarmers",
+    "organicBioManureFertilizersToFarmers",
+    "dripSprinklerIrrigationToFarmers",
+    "weatherAdvisoriesToFarmers",
+    "pestDiseaseAlertsToFarmers",
+    "supplyingAgriculturalResidueToBioCngGasPlants",
+    "trainingOnOrganicFarmingToFarmers",
+    "solarPanelsAtFpoLevel",
+    "establishmentOfRainwaterHarvestingAtFpoLevel",
+    "compostingUnitsAtFpoLevel"
+  ],
+  "additionalProperties": false
+}

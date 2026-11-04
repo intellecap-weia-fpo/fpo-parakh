@@ -1,0 +1,4363 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}FPO Admin - Reports{% endblock %}
+
+{% block meta_description %}FPO Analytics Dashboard- Comprehensive FPO performance metrics and insights{% endblock %}
+
+{% block body_class %}bg-background text-foreground min-h-screen{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Alpine.js cloak */
+  [x-cloak] {
+    display: none !important;
+  }
+
+  /* Override primary colors with #004687 */
+  :root {
+    --primary-brand: #163a68;
+    --primary-brand-light: #2f5ed1;
+    --primary-brand-dark: #0c294d;
+    --primary-brand-50: #eaf2fd;
+    --primary-brand-100: #d8e6fa;
+    --primary-brand-200: #b7cff3;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Custom scrollbar for sidebar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Stat card custom colors */
+  .stat-card {
+    border-top: 3px solid;
+    border-top-color: var(--card-color);
+  }
+
+  .stat-card .stat-icon svg {
+    stroke: var(--card-color) !important;
+  }
+
+  .stat-card::before {
+    display: none; /* Hide the default before element since we're using border-top */
+  }
+
+  /* Stat card tooltip styles */
+  .stat-card-wrapper {
+    position: relative;
+    min-width: 0; /* Prevent grid blowout */
+  }
+  .stat-card-wrapper .stat-card {
+    overflow: visible; /* Allow tooltip to overflow */
+  }
+  .stat-tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.92);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    padding: 10px 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 160px;
+    max-width: 280px;
+    width: max-content;
+    color: #e2e8f0;
+    font-size: 12px;
+  }
+  .stat-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: rgba(15, 23, 42, 0.92);
+  }
+  .stat-tooltip-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .stat-tooltip-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 12px;
+    color: #e2e8f0;
+    line-height: 1.4;
+  }
+  .stat-tooltip-item:hover {
+    background: transparent;
+  }
+  .stat-tooltip-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Custom styles for reports layout */
+  .reports-layout {
+    display: flex;
+    min-height: 100vh;
+    padding-top: 64px; /* Height of top nav bar */
+  }
+
+  .reports-sidebar {
+    position: fixed;
+    left: 0;
+    top: 64px; /* Start below top nav bar */
+    bottom: 0;
+    height: calc(100vh - 64px); /* Full height minus top nav bar */
+    z-index: 40;
+    overflow-y: auto;
+  }
+
+  .reports-main {
+    flex: 1;
+    min-width: 0; /* Prevent flex child from overflowing */
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+    overflow: hidden;
+  }
+
+  .reports-topbar {
+    background: #ffffff;
+    backdrop-filter: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .reports-content {
+    padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #f7f9fc;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 1023px) {
+    .reports-main {
+      margin-left: 0 !important;
+    }
+  }
+
+  /* Turbo Progress Bar */
+  .turbo-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(to right, var(--primary-brand) 0%, var(--primary-brand-light) 100%);
+    z-index: 9999;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 70, 135, 0.3);
+  }
+
+  /* Navigation item styling */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+  }
+
+  .nav-item.active {
+    background: linear-gradient(to right, var(--primary-brand-50), white);
+    color: var(--primary-brand-dark);
+    border: 1px solid var(--primary-brand-100);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .nav-item:not(.active) {
+    color: #475569;
+  }
+
+  .nav-item:not(.active):hover {
+    background-color: #f8fafc;
+    color: var(--primary-brand);
+  }
+
+  /* Card hover effects */
+  .dashboard-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  }
+
+  .dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Loading indicator */
+  .loading-overlay {
+    background: rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Filter section styling */
+  .filter-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    display: block;
+    padding-left: 0.25rem;
+    transition: color 0.15s ease;
+  }
+
+  .filter-label.primary {
+    color: var(--primary-brand);
+  }
+
+  .filter-select {
+    width: 100%;
+    background-color: #f8fafc;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: #334155;
+    transition: all 0.15s ease;
+  }
+
+  .filter-select:hover {
+    background-color: #f1f5f9;
+  }
+
+  .filter-select:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--primary-brand);
+  }
+
+  .datetime-input-wrap {
+    position: relative;
+  }
+
+  .datetime-input-wrap .datetime-field-icon {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .datetime-input-wrap .filter-select,
+  .datetime-input-wrap .flatpickr-input {
+    padding-right: 2.5rem;
+  }
+
+  /* Primary brand button */
+  .btn-primary-brand {
+    background: linear-gradient(to bottom right, var(--primary-brand), var(--primary-brand-dark));
+    color: white;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 70, 135, 0.3);
+    transition: all 0.15s ease;
+  }
+
+  .btn-primary-brand:hover {
+    background: linear-gradient(to bottom right, var(--primary-brand-light), var(--primary-brand));
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    background: #ffffff;
+    color: #33445d;
+    border: 1px solid #d7e0eb;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-secondary:hover {
+    color: #163a68;
+    background: #f7f9fc;
+  }
+
+  #score-stats-row .stat-card {
+    min-height: 132px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e0e7f0;
+    border-top: 1px solid #e0e7f0;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  #score-stats-row .stat-value {
+    display: grid;
+    place-items: center;
+    width: 66px;
+    height: 66px;
+    margin: 0 0 10px;
+    border: 6px solid var(--card-color);
+    border-right-color: #e7ecf3;
+    border-radius: 999px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 19px;
+  }
+
+  #score-stats-row .stat-label {
+    color: #65758a;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  /* Active filter badge */
+  .active-filters-badge {
+    background: rgba(0, 70, 135, 0.05);
+    border: 1px solid rgba(0, 70, 135, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .active-filters-title {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--primary-brand);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .filters-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .filters-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .filters-panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .filters-subheading-item {
+    grid-column: 1 / -1;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .filters-subheading-item.is-active {
+    display: inline-flex;
+  }
+
+  .btn-filter-clear {
+    background: #f1f5f9;
+    color: #334155;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.15s ease;
+  }
+
+  .btn-filter-clear:hover {
+    background: #e2e8f0;
+  }
+
+  @media (max-width: 1200px) {
+    .filters-panel-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 767px) {
+    .filters-panel-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Navigation item styling */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+  }
+
+  .nav-item.active {
+    background: linear-gradient(to right, var(--primary-brand-50), white);
+    color: var(--primary-brand-dark);
+    border: 1px solid var(--primary-brand-100);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .nav-item:not(.active) {
+    color: #475569;
+  }
+
+  .nav-item:not(.active):hover {
+    background-color: #f8fafc;
+    color: var(--primary-brand);
+  }
+
+  /* Selected Filter Badges */
+  .filter-badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  .filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to right, var(--primary-brand-50), white);
+    border: 1px solid var(--primary-brand-200);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--primary-brand-dark);
+    transition: all 0.15s ease;
+  }
+
+  .filter-badge:hover {
+    background: linear-gradient(to right, var(--primary-brand-100), var(--primary-brand-50));
+    box-shadow: 0 2px 4px rgba(0, 70, 135, 0.1);
+  }
+
+  .filter-badge-label {
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  .filter-badge-value {
+    color: var(--primary-brand);
+  }
+
+  .filter-badge-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.25rem;
+    background: rgba(0, 70, 135, 0.1);
+    color: var(--primary-brand);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .filter-badge-close:hover {
+    background: var(--primary-brand);
+    color: white;
+  }
+
+  /* Scrollable custom legends for dense chart labels */
+  .chart-legend-scroll {
+    display: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.375rem 0;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chart-legend-nav {
+    display: none;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    margin-bottom: 0.75rem;
+  }
+
+  .chart-legend-arrow {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .chart-legend-arrow:hover:not(:disabled) {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+  }
+
+  .chart-legend-arrow:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .chart-legend-list {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    min-width: max-content;
+  }
+
+  .chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 0;
+    background: transparent;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .chart-legend-item:hover {
+    background: #e2e8f0;
+  }
+
+  .chart-legend-item.is-hidden {
+    opacity: 0.45;
+  }
+
+  .chart-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .chart-legend-text {
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .governance-card-filter {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    min-width: 220px;
+  }
+
+  .governance-card-filter.is-active {
+    display: flex;
+  }
+
+  .governance-card-filter .filter-select {
+    min-height: 2.35rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .operations-card-filter {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    min-width: 220px;
+  }
+
+  .operations-card-filter.is-active {
+    display: flex;
+  }
+
+  .operations-card-filter .filter-select {
+    min-height: 2.35rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .systems-card-filter {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    min-width: 220px;
+  }
+
+  .systems-card-filter.is-active {
+    display: flex;
+  }
+
+  .systems-card-filter .filter-select {
+    min-height: 2.35rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .finance-card-filter {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    min-width: 220px;
+  }
+
+  .finance-card-filter.is-active {
+    display: flex;
+  }
+
+  .finance-card-filter .filter-select {
+    min-height: 2.35rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-layout" x-data="sidebarController()">
+  <!-- Top Navigation Bar -->
+  <nav class="fpo-topbar bg-card/90 border-b border-border/40 text-card-foreground fixed top-0 left-0 right-0 z-50">
+    <div class="px-4 sm:px-6 lg:px-6">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <!-- Sidebar Toggle - Desktop (Collapse) -->
+          <button @click="toggleCollapse()"
+                  class="hidden lg:flex items-center px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95"
+                  :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+            <i class="fa fa-bars text-current"></i>
+          </button>
+
+          <!-- Sidebar Toggle - Mobile -->
+          <button @click="toggleSidebar()"
+                  class="lg:hidden flex items-center justify-center p-2 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+            <i class="fa fa-bars text-current"></i>
+          </button>
+
+          <div class="fpo-brand flex items-center">
+            <div class="fpo-brand-mark"><i class="fa fa-sitemap"></i></div>
+            <a href="{% url 'fpo:fpos_list' %}" class="fpo-brand-copy"><strong>FPO Intelligence</strong><span>Rating Platform</span></a>
+          </div>
+        </div>
+
+        <!-- Right side - Language and User Menu -->
+        <div class="flex items-center space-x-1 md:space-x-3">
+          <!-- Language Switcher -->
+          <div class="relative" x-data="{ langOpen: false }">
+            <button @click="langOpen = !langOpen"
+                    class="flex items-center space-x-2 p-2 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+              <i class="fa fa-globe text-xl"></i>
+              <span class="hidden md:block text-sm font-medium">{% get_current_language as LANGUAGE_CODE %}{{ LANGUAGE_CODE|upper }}</span>
+              <i class="fa fa-chevron-down text-xs transition-transform duration-200"
+                 :class="{ 'rotate-180': langOpen }"></i>
+            </button>
+            <div x-show="langOpen"
+                 x-cloak
+                 @click.away="langOpen = false"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="transform opacity-0 scale-95 translate-y-1"
+                 x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave-end="transform opacity-0 scale-95 translate-y-1"
+                 class="absolute right-0 mt-3 w-56 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 z-50 overflow-hidden">
+              <div class="p-3">
+                <h3 class="text-sm font-semibold text-popover-foreground mb-3">{% trans "Language" %}</h3>
+                {% get_available_languages as LANGUAGES %}
+                {% for language_code, language_name in LANGUAGES %}
+                  {% if language_code == 'en' or language_code == 'hi' or language_code == 'mr' %}
+                    <form action="{% url 'neo:set_language' %}" method="post" class="inline-block w-full">
+                      {% csrf_token %}
+                      <input name="next" type="hidden" value="{{ request.get_full_path }}"/>
+                      <input name="language" type="hidden" value="{{ language_code }}"/>
+                      <button type="submit"
+                              class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-accent/50 text-popover-foreground transition-colors text-left {% if LANGUAGE_CODE == language_code %}bg-accent/30 text-accent-foreground{% endif %}">
+                        <span class="text-sm">{{ language_name }}</span>
+                        {% if LANGUAGE_CODE == language_code %}
+                          <i class="fa fa-check text-xs ml-auto text-primary"></i>
+                        {% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile -->
+          <div class="relative" x-data="{ profileOpen: false }">
+            <button @click="profileOpen = !profileOpen"
+                    class="flex items-center space-x-2 px-2 py-1 rounded-xl text-muted-foreground hover:text-card-foreground hover:bg-accent/60 transition-all duration-200 hover:scale-105 active:scale-95">
+              <div class="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center shadow-sm">
+                <i class="fa fa-user text-base text-primary-foreground"></i>
+              </div>
+              <span class="hidden md:block text-sm font-medium">{{ user.username|truncatechars:12 }}</span>
+              <i class="fa fa-chevron-down text-xs transition-transform duration-200"
+                 :class="{ 'rotate-180': profileOpen }"></i>
+            </button>
+            <!-- Profile Dropdown -->
+            <div x-show="profileOpen"
+                 x-cloak
+                 @click.away="profileOpen = false"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="transform opacity-0 scale-95 translate-y-1"
+                 x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                 x-transition:leave-end="transform opacity-0 scale-95 translate-y-1"
+                 class="absolute right-0 mt-3 w-72 bg-popover/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 z-50 overflow-hidden">
+              <div class="p-5">
+                <div class="flex items-center space-x-4 mb-5">
+                  <div class="w-14 h-14 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fa fa-user text-primary-foreground text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-popover-foreground">{{ user.username }}</p>
+                    <p class="text-sm text-muted-foreground">{{ user.email|truncatechars:25 }}</p>
+                  </div>
+                </div>
+                <div class="border-t border-border/50 pt-3">
+                  <a href="{% url 'auth_app:logout' %}"
+                     class="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-destructive/10 hover:text-destructive text-popover-foreground transition-colors">
+                    <i class="fa fa-sign-out text-base"></i>
+                    <span class="text-sm">{% trans "Sign Out" %}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  {% include "fpo/sidebar.html" with sidebar_id="reportsSidebar" %}
+
+  <!-- Reports Main Content -->
+  <div class="reports-main">
+    <!-- Top Bar -->
+    <header class="reports-topbar">
+      <div>
+        <p class="fpo-eyebrow">Performance Analytics</p>
+        <h2 id="mainDashboardHeading" class="fpo-page-title">FPO Performance Overview</h2>
+        <p id="mainDashboardSubheading" class="fpo-page-subtitle">Scoring, governance and financial insight across the portfolio</p>
+      </div>
+      <div class="flex gap-4">
+        <button onclick="exportData()" class="btn-secondary">
+          <i class="fa fa-download"></i>
+          {% trans "Download Reports" %}
+        </button>
+        <button onclick="openFpoTable()" class="btn-primary-brand">
+          <i class="fa fa-table"></i>
+          FPOs Table
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="reports-content">
+      <!-- Loading indicator for Turbo updates -->
+      <div id="turbo-loading" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
+        <div class="bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center">
+          <i class="fa fa-spinner fa-spin mr-2"></i>
+          {% trans "Updating data..." %}
+        </div>
+      </div>
+
+      <!-- Turbo Frame for dynamic content updates -->
+      <turbo-frame id="reports-content">
+        <!-- Dashboard Statistics - First Line -->
+        <div class="stats-row mb-8">
+          <!-- Total FPOs / Total Governance Score -->
+          <div class="stat-card-wrapper" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #c9a227;" @click="showTooltip = !showTooltip">
+              <!-- When overview: shows total fpos, when governance: shows total governance score -->
+              <div class="stat-value" id="stat-total-fpos">{{ total_fpos_count }}</div>
+              <div class="stat-label" id="stat-total-fpos-label">{% trans "Total FPOs" %} <i class="fa fa-info-circle" style="font-size: 10px; margin-left: 4px; opacity: 0.4; vertical-align: middle;"></i></div>
+            </div>
+            <div class="stat-tooltip" id="stat-total-fpos-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title" id="stat-total-fpos-tooltip-title">Total FPOs</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span id="stat-total-fpos-tooltip-desc">Total number of active Farmer Producer Organizations currently registered and tracked in the system.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Promoting Agencies -->
+          <div class="stat-card-wrapper" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #114081;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-total-promoting-agencies">{{ total_promoting_agencies }}</div>
+              <div class="stat-label">{% trans "Promoting Agencies" %} <i class="fa fa-info-circle" style="font-size: 10px; margin-left: 4px; opacity: 0.4; vertical-align: middle;"></i></div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip"
+                 x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Promoting Agencies</div>
+              {% for agency in promoting_agency_names_list %}
+                <div class="stat-tooltip-item">
+                  <span class="stat-tooltip-dot" style="background: #114081;"></span>
+                  {{ agency }}
+                </div>
+              {% empty %}
+                <div class="stat-tooltip-item" style="color: #94a3b8;">No agencies found</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- States -->
+          <div class="stat-card-wrapper" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #0d5418;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-total-states">{{ total_states_count }}</div>
+              <div class="stat-label">{% trans "States" %} <i class="fa fa-info-circle" style="font-size: 10px; margin-left: 4px; opacity: 0.4; vertical-align: middle;"></i></div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip"
+                 x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">States</div>
+              {% for state in state_names_list %}
+                <div class="stat-tooltip-item">
+                  <span class="stat-tooltip-dot" style="background: #0d5418;"></span>
+                  {{ state }}
+                </div>
+              {% empty %}
+                <div class="stat-tooltip-item" style="color: #94a3b8;">No states found</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Districts -->
+          <div class="stat-card-wrapper" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #c6bc14;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-total-districts">{{ total_districts_count }}</div>
+              <div class="stat-label">{% trans "Districts" %} <i class="fa fa-info-circle" style="font-size: 10px; margin-left: 4px; opacity: 0.4; vertical-align: middle;"></i></div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip"
+                 x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Districts</div>
+              {% for district in district_names_list %}
+                <div class="stat-tooltip-item">
+                  <span class="stat-tooltip-dot" style="background: #c6bc14;"></span>
+                  {{ district }}
+                </div>
+              {% empty %}
+                <div class="stat-tooltip-item" style="color: #94a3b8;">No districts found</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="filters-panel">
+          <form id="filterForm" class="space-y-0" onsubmit="event.preventDefault(); applyFilters();">
+            <div class="filters-panel-grid">
+              <div class="group relative">
+                <label for="report_section" class="filter-label primary">Report View</label>
+                <select name="report_section" id="report_section" class="filter-select" onchange="onReportSectionFilterChange()">
+                  <option value="overview" {% if selected_report_section == 'overview' %}selected{% endif %}>Overview</option>
+                  <option value="governance" {% if selected_report_section == 'governance' %}selected{% endif %}>Governance</option>
+                  <option value="operations" {% if selected_report_section == 'operations' %}selected{% endif %}>Operations</option>
+                  <option value="systems" {% if selected_report_section == 'systems' %}selected{% endif %}>Process and Systems</option>
+                  <option value="finance" {% if selected_report_section == 'finance' %}selected{% endif %}>Finance</option>
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="promoting_agency" class="filter-label primary"><i class="fa fa-building mr-1 text-xs"></i>Promoting Agency</label>
+                <select name="promoting_agency" id="promoting_agency" class="filter-select">
+                  <option value="">All Agencies</option>
+                  {% for agency in promoting_agencies %}
+                    <option value="{{ agency }}" {% if agency == selected_promoting_agency %}selected{% endif %}>{{ agency|truncatechars:30 }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="score_category" class="filter-label"><i class="fa fa-star mr-1 text-xs"></i>Score Category</label>
+                <select name="score_category" id="score_category" class="filter-select">
+                  {% for value, label in score_categories %}
+                    <option value="{{ value }}" {% if value == selected_score_category %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="state" class="filter-label"><i class="fa fa-map mr-1 text-xs"></i>State</label>
+                <select name="state" id="state" class="filter-select">
+                  <option value="">All States</option>
+                  {% for state in all_states %}
+                    <option value="{{ state }}" {% if state == selected_state %}selected{% endif %}>{{ state }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="fpo_name" class="filter-label"><i class="fa fa-building mr-1 text-xs"></i>FPO</label>
+                <select name="fpo_name" id="fpo_name" class="filter-select">
+                  <option value="">All FPOs</option>
+                  {% for fpo in all_fpo_names %}
+                    <option value="{{ fpo }}" {% if fpo == selected_fpo_name %}selected{% endif %}>{{ fpo|truncatechars:30 }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="financial_year" class="filter-label"><i class="fa fa-calendar mr-1 text-xs"></i>Financial Year</label>
+                <select id="financial_year" name="financial_year" class="filter-select">
+                  <option value="">All Years</option>
+                  {% for year in financial_years %}
+                    <option value="{{ year }}" {% if year == selected_financial_year %}selected{% endif %}>{{ year }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="group relative">
+                <label for="start_datetime" class="filter-label"><i class="fa fa-clock mr-1 text-xs"></i>From Date & Time</label>
+                <div class="datetime-input-wrap">
+                  <input
+                    type="text"
+                    id="start_datetime"
+                    name="start_datetime"
+                    class="filter-select"
+                    value="{{ selected_start_datetime|default:'' }}"
+                    placeholder="Select start date and time"
+                    autocomplete="off"
+                  >
+                  <span class="datetime-field-icon" aria-hidden="true"><i class="fa fa-calendar"></i></span>
+                </div>
+              </div>
+
+              <div class="group relative">
+                <label for="end_datetime" class="filter-label"><i class="fa fa-clock mr-1 text-xs"></i>To Date & Time</label>
+                <div class="datetime-input-wrap">
+                  <input
+                    type="text"
+                    id="end_datetime"
+                    name="end_datetime"
+                    class="filter-select"
+                    value="{{ selected_end_datetime|default:'' }}"
+                    placeholder="Select end date and time"
+                    autocomplete="off"
+                  >
+                  <span class="datetime-field-icon" aria-hidden="true"><i class="fa fa-calendar"></i></span>
+                </div>
+              </div>
+
+              <div id="sectionFiltersSubheading" class="filters-subheading-item" aria-live="polite">
+                <i class="fa fa-filter" aria-hidden="true"></i>
+                <span id="sectionFiltersSubheadingText"></span>
+              </div>
+
+              <div class="group relative governance-card-filter" id="governance-focus-filter-panel">
+                <label for="governance_focus" class="filter-label">Governance Focus</label>
+                <select name="governance_focus" id="governance_focus" class="filter-select" aria-label="Governance focus">
+                  <option value="second_line_management" {% if selected_governance_focus == 'second_line_management' %}selected{% endif %}>Second Line of Management</option>
+                  <option value="minutes_fpo_meetings" {% if selected_governance_focus == 'minutes_fpo_meetings' %}selected{% endif %}>Minutes of FPO Meetings</option>
+                  <option value="promoting_agencies" {% if selected_governance_focus == 'promoting_agencies' %}selected{% endif %}>Promoting Agencies</option>
+                </select>
+              </div>
+
+              <div class="group relative governance-card-filter" id="governance-metric-filter-panel">
+                <label for="governance_metric" class="filter-label">Governance Metric</label>
+                <select name="governance_metric" id="governance_metric" class="filter-select" aria-label="Governance metric">
+                  <option value="governance_score" {% if selected_governance_metric == 'governance_score' %}selected{% endif %}>Governance Score</option>
+                  <option value="active_membership" {% if selected_governance_metric == 'active_membership' %}selected{% endif %}>Active Membership</option>
+                  <option value="quality_bod" {% if selected_governance_metric == 'quality_bod' %}selected{% endif %}>Quality of BOD</option>
+                  <option value="quality_ceo" {% if selected_governance_metric == 'quality_ceo' %}selected{% endif %}>Quality of CEO</option>
+                  <option value="mobilization_achievement" {% if selected_governance_metric == 'mobilization_achievement' %}selected{% endif %}>Mobilization Achievement</option>
+                  <option value="optimal_bod_percent" {% if selected_governance_metric == 'optimal_bod_percent' %}selected{% endif %}>Optimal % of BOD</option>
+                </select>
+              </div>
+
+              <div class="group relative operations-card-filter" id="operations-focus-filter-panel">
+                <label for="operations_focus" class="filter-label">Operations Focus</label>
+                <select name="operations_focus" id="operations_focus" class="filter-select" aria-label="Operations focus">
+                  <option value="price_volatility" {% if selected_operations_focus == 'price_volatility' %}selected{% endif %}>Price Volatility of Products</option>
+                  <option value="input_timeliness" {% if selected_operations_focus == 'input_timeliness' %}selected{% endif %}>Timeline for Availability of Inputs</option>
+                  <option value="input_affordability" {% if selected_operations_focus == 'input_affordability' %}selected{% endif %}>Affordability of Inputs</option>
+                  <option value="input_place" {% if selected_operations_focus == 'input_place' %}selected{% endif %}>Place for Availability of Inputs</option>
+                  <option value="output_distance" {% if selected_operations_focus == 'output_distance' %}selected{% endif %}>Distance of output collection centres</option>
+                  <option value="credit_history" {% if selected_operations_focus == 'credit_history' %}selected{% endif %}>Credit History</option>
+                  <option value="type_of_fpo" {% if selected_operations_focus == 'type_of_fpo' %}selected{% endif %}>Type of FPO</option>
+                </select>
+              </div>
+
+              <div class="group relative operations-card-filter" id="operations-metric-filter-panel">
+                <label for="operations_metric" class="filter-label">Operations Metric</label>
+                <select name="operations_metric" id="operations_metric" class="filter-select" aria-label="Operations metric">
+                  <option value="price_volatility" {% if selected_operations_metric == 'price_volatility' %}selected{% endif %}>Price Volatility of Products</option>
+                  <option value="input_timeliness" {% if selected_operations_metric == 'input_timeliness' %}selected{% endif %}>Timeline for Availability of Inputs</option>
+                  <option value="input_affordability" {% if selected_operations_metric == 'input_affordability' %}selected{% endif %}>Affordability of Inputs</option>
+                  <option value="input_place" {% if selected_operations_metric == 'input_place' %}selected{% endif %}>Place for Availability of Inputs</option>
+                  <option value="output_distance" {% if selected_operations_metric == 'output_distance' %}selected{% endif %}>Distance of output collection centres</option>
+                  <option value="credit_history" {% if selected_operations_metric == 'credit_history' %}selected{% endif %}>Credit History</option>
+                  <option value="type_of_fpo" {% if selected_operations_metric == 'type_of_fpo' %}selected{% endif %}>Type of FPO</option>
+                </select>
+              </div>
+
+              <div class="group relative systems-card-filter" id="systems-focus-filter-panel">
+                <label for="systems_focus" class="filter-label">Systems Focus</label>
+                <select name="systems_focus" id="systems_focus" class="filter-select" aria-label="Systems focus">
+                  <option value="accounts_mis" {% if selected_systems_focus == 'accounts_mis' %}selected{% endif %}>Accounts and MIS</option>
+                  <option value="insurance_stock" {% if selected_systems_focus == 'insurance_stock' %}selected{% endif %}>Insurance of Stock</option>
+                  <option value="credit_record" {% if selected_systems_focus == 'credit_record' %}selected{% endif %}>Credit Record of FPO</option>
+                  <option value="statutory_filings" {% if selected_systems_focus == 'statutory_filings' %}selected{% endif %}>Statutory Filings</option>
+                  <option value="books_records" {% if selected_systems_focus == 'books_records' %}selected{% endif %}>Books and Records Up to Date</option>
+                  <option value="stock_reconciliation" {% if selected_systems_focus == 'stock_reconciliation' %}selected{% endif %}>Reconciliation of Stocks</option>
+                  <option value="penalties_levied" {% if selected_systems_focus == 'penalties_levied' %}selected{% endif %}>Penalties Levied</option>
+                </select>
+              </div>
+
+              <div class="group relative systems-card-filter" id="systems-metric-filter-panel">
+                <label for="systems_metric" class="filter-label">Systems Metric</label>
+                <select name="systems_metric" id="systems_metric" class="filter-select" aria-label="Systems metric">
+                  <option value="accounts_mis" {% if selected_systems_metric == 'accounts_mis' %}selected{% endif %}>Accounts and MIS</option>
+                  <option value="insurance_stock" {% if selected_systems_metric == 'insurance_stock' %}selected{% endif %}>Insurance of Stock</option>
+                  <option value="credit_record" {% if selected_systems_metric == 'credit_record' %}selected{% endif %}>Credit Record of FPO</option>
+                  <option value="statutory_filings" {% if selected_systems_metric == 'statutory_filings' %}selected{% endif %}>Statutory Filings</option>
+                  <option value="books_records" {% if selected_systems_metric == 'books_records' %}selected{% endif %}>Books and Records Up to Date</option>
+                  <option value="stock_reconciliation" {% if selected_systems_metric == 'stock_reconciliation' %}selected{% endif %}>Reconciliation of Stocks</option>
+                  <option value="penalties_levied" {% if selected_systems_metric == 'penalties_levied' %}selected{% endif %}>Penalties Levied</option>
+                </select>
+              </div>
+
+              <div class="group relative finance-card-filter" id="finance-focus-filter-panel">
+                <label for="finance_focus" class="filter-label">Finance Focus</label>
+                <select name="finance_focus" id="finance_focus" class="filter-select" aria-label="Finance focus">
+                  <option value="net_profit" {% if selected_finance_focus == 'net_profit' %}selected{% endif %}>Net Profit</option>
+                  <option value="revenue_per_member" {% if selected_finance_focus == 'revenue_per_member' %}selected{% endif %}>Revenue per Member</option>
+                  <option value="inventory_period" {% if selected_finance_focus == 'inventory_period' %}selected{% endif %}>Inventory Period</option>
+                  <option value="asset_turnover_ratio" {% if selected_finance_focus == 'asset_turnover_ratio' %}selected{% endif %}>Asset Turnover Ratio</option>
+                  <option value="accounts_payable" {% if selected_finance_focus == 'accounts_payable' %}selected{% endif %}>Accounts Payable</option>
+                  <option value="accounts_receivable" {% if selected_finance_focus == 'accounts_receivable' %}selected{% endif %}>Accounts Receivable</option>
+                </select>
+              </div>
+
+              <div class="group relative finance-card-filter" id="finance-metric-filter-panel">
+                <label for="finance_metric" class="filter-label">Finance Metric</label>
+                <select name="finance_metric" id="finance_metric" class="filter-select" aria-label="Finance metric">
+                  <option value="net_profit" {% if selected_finance_metric == 'net_profit' %}selected{% endif %}>Net Profit</option>
+                  <option value="revenue_per_member" {% if selected_finance_metric == 'revenue_per_member' %}selected{% endif %}>Revenue per Member</option>
+                  <option value="inventory_period" {% if selected_finance_metric == 'inventory_period' %}selected{% endif %}>Inventory Period</option>
+                  <option value="asset_turnover_ratio" {% if selected_finance_metric == 'asset_turnover_ratio' %}selected{% endif %}>Asset Turnover Ratio</option>
+                  <option value="accounts_payable" {% if selected_finance_metric == 'accounts_payable' %}selected{% endif %}>Accounts Payable</option>
+                  <option value="accounts_receivable" {% if selected_finance_metric == 'accounts_receivable' %}selected{% endif %}>Accounts Receivable</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="filters-panel-actions">
+              <button type="button" onclick="applyFilters()" class="btn-primary-brand">
+                <i class="fa fa-search"></i>
+                Apply Filters
+              </button>
+              <button type="button" onclick="clearAllFilters()" class="btn-filter-clear">
+                <i class="fa fa-times"></i>
+                Clear
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Dashboard Statistics - Second Line -->
+        <div id="score-stats-row" class="stats-row mb-8" style="grid-template-columns: repeat(5, 1fr);">
+          <!-- Avg Total Score -->
+          <div class="stat-card-wrapper" data-score-section="overview" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #1b52ff;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-avg-total">{{ avg_total_score }}</div>
+              <div class="stat-label">{% trans "Average Overall Score" %}</div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Average Score</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>The overall average performance score across all FPOs, calculated from governance, operations, systems, and financial scores combined.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avg Governance Score -->
+          <div class="stat-card-wrapper" data-score-section="governance" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #c9a227;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-avg-governance">{{ avg_governance_score }}</div>
+              <div class="stat-label">{% trans "Average Governance Score" %}</div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Governance Score</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>Measures the strength of FPO governance practices including board composition, meeting regularity, decision-making processes, and compliance with statutory requirements.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avg Operations Score -->
+          <div class="stat-card-wrapper" data-score-section="operations" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #c2453b;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-avg-operations">{{ avg_operations_score }}</div>
+              <div class="stat-label">{% trans "Average Operations Score" %}</div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Operations Score</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>Evaluates the FPO's business operations including input/output activities, market linkages, value addition services, and overall business volume with member farmers.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avg Systems Score -->
+          <div class="stat-card-wrapper" data-score-section="systems" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #1f8a5b;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-avg-systems">{{ avg_systems_score }}</div>
+              <div class="stat-label">{% trans "Average Systems Score" %}</div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Systems Score</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>Assesses the FPO's internal systems and processes including record-keeping, MIS usage, accounting systems, HR practices, and technology adoption for efficient management.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avg Financial Score -->
+          <div class="stat-card-wrapper" data-score-section="finance" x-data="{ showTooltip: false }" @mouseenter="showTooltip = true" @mouseleave="showTooltip = false">
+            <div class="stat-card" style="--card-color: #c9a227;" @click="showTooltip = !showTooltip">
+              <div class="stat-value" id="stat-avg-financial">{{ avg_financial_score }}</div>
+              <div class="stat-label">{% trans "Average Financial Score" %}</div>
+            </div>
+            <div class="stat-tooltip"
+                 x-show="showTooltip" x-cloak
+                 @click.away="showTooltip = false"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-1">
+              <div class="stat-tooltip-title">Financial Score</div>
+              <div class="stat-tooltip-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>Measures the FPO's financial health including turnover growth, profitability, access to credit, financial management practices, and sustainability of operations.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Interactive Charts Section -->
+        <div>
+          <!-- Tab Selection for Chart Categories -->
+          <div class="border-b mb-6" style="border-color: rgba(100, 116, 139, 0.2); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);">
+            <div class="flex items-start">
+              <div class="flex space-x-2" id="chartTabContainer">
+                <!-- Tabs will be generated dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Chart 1: FPO Count Analysis Bar Chart -->
+            <div class="dashboard-card rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold" style="color: #1e293b;">{% trans "FPO numbers" %}</h3>
+              </div>
+
+              <div class="chart-legend-nav" id="chart1LegendNav">
+                <button type="button" class="chart-legend-arrow" data-dir="left" onclick="scrollLegendBy('chart1Legend', -240)" aria-label="Scroll chart legend left">
+                  <i class="fa fa-chevron-left"></i>
+                </button>
+                <div id="chart1Legend" class="chart-legend-scroll" aria-label="Chart 1 legend"></div>
+                <button type="button" class="chart-legend-arrow" data-dir="right" onclick="scrollLegendBy('chart1Legend', 240)" aria-label="Scroll chart legend right">
+                  <i class="fa fa-chevron-right"></i>
+                </button>
+              </div>
+
+              <!-- Chart.js Canvas -->
+              <div class="relative" id="chart1Container" style="min-height: 420px;">
+                <canvas id="chart1Canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 3: Score Analysis Bar Chart -->
+            <div class="dashboard-card rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold" style="color: #1e293b;">{% trans "FPOs Score" %}</h3>
+              </div>
+
+              <!-- Chart.js Canvas -->
+              <div class="relative" id="chart2Container" style="min-height: 420px;">
+                <canvas id="chart2Canvas"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Trend Line Chart - Full Width -->
+          <div class="dashboard-card rounded-2xl p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-lg font-bold" style="color: #1e293b;" id="trendChartTitle">{% trans "Score Trend Over Years" %}</h3>
+                <p class="text-sm mt-1" style="color: #94a3b8;">{% trans "Average FPO performance trend across financial years" %}</p>
+                <p id="trendLegendHint" class="text-xs mt-1" style="color: #64748b;">{% trans "Tip: Click legend items to show/hide lines" %}</p>
+              </div>
+            </div>
+
+            <!-- Chart.js Canvas -->
+            <div class="relative" id="trendChartContainer" style="min-height: 350px;">
+              <canvas id="trendCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        </turbo-frame>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// Alpine.js Sidebar Controller
+function sidebarController() {
+  return {
+    sidebarOpen: window.innerWidth >= 1024,
+    sidebarCollapsed: false,
+    isDesktop: window.innerWidth >= 1024,
+    resizeTimeout: null,
+
+    init() {
+      // Restore collapsed state from localStorage
+      const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
+      if (savedCollapsedState !== null) {
+        this.sidebarCollapsed = JSON.parse(savedCollapsedState);
+      }
+
+      // Ensure sidebar is always open on desktop
+      if (this.isDesktop) {
+        this.sidebarOpen = true;
+      }
+
+      // Update main content margin
+      this.updateMainMargin();
+
+      // Debounced resize handler
+      window.addEventListener('resize', () => {
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = setTimeout(() => {
+          const wasDesktop = this.isDesktop;
+          this.isDesktop = window.innerWidth >= 1024;
+
+          // Only change sidebar state when crossing desktop/mobile boundary
+          if (wasDesktop !== this.isDesktop) {
+            this.sidebarOpen = this.isDesktop;
+            // Reset collapsed state on mobile
+            if (!this.isDesktop) {
+              this.sidebarCollapsed = false;
+            }
+          }
+          this.updateMainMargin();
+        }, 200);
+      });
+
+      // Watch for collapsed state changes
+      this.$watch('sidebarCollapsed', (value) => {
+        localStorage.setItem('sidebarCollapsed', JSON.stringify(value));
+        this.updateMainMargin();
+      });
+    },
+
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
+
+    toggleCollapse() {
+      this.sidebarCollapsed = !this.sidebarCollapsed;
+    },
+
+    updateMainMargin() {
+      const mainContent = document.querySelector('.reports-main');
+      if (!mainContent) return;
+
+      if (this.isDesktop) {
+        if (this.sidebarCollapsed) {
+          mainContent.style.marginLeft = '64px'; // Collapsed width
+        } else {
+          mainContent.style.marginLeft = '288px'; // Full width (w-64 xl:w-72 = 288px)
+        }
+      } else {
+        mainContent.style.marginLeft = '0';
+      }
+    }
+  };
+}
+
+// Function to clear all filters
+// FPOs Table Functions
+function openFpoTable() {
+  const drawer = document.getElementById('fpoTableDrawer');
+  drawer.classList.remove('hidden');
+
+  // Start loading FPOs data
+  loadFpoTableData();
+}
+
+function closeFpoTable() {
+  const drawer = document.getElementById('fpoTableDrawer');
+  drawer.classList.add('hidden');
+
+  // Reset drawer state
+  resetFpoTableState();
+}
+
+function resetFpoTableState() {
+  // Show loading state
+  document.getElementById('fpoTableLoading').classList.remove('hidden');
+  document.getElementById('fpoTableContainer').classList.add('hidden');
+  document.getElementById('fpoTableEmpty').classList.add('hidden');
+
+  // Clear search input
+  const searchInput = document.getElementById('fpoSearchInput');
+  if (searchInput) searchInput.value = '';
+
+  // Clear table body
+  const tableBody = document.getElementById('fpoTableBody');
+  if (tableBody) tableBody.innerHTML = '';
+}
+
+// Pagination state variables
+let currentPage = 1;
+let pageSize = 8; // Fixed to 8 records per page
+let totalFpoCount = 0;
+let totalPages = 1;
+
+async function loadFpoTableData(searchTerm = '', page = 1, newPageSize = null) {
+  const loadingEl = document.getElementById('fpoTableLoading');
+  const containerEl = document.getElementById('fpoTableContainer');
+  const emptyEl = document.getElementById('fpoTableEmpty');
+  const tableBody = document.getElementById('fpoTableBody');
+  const fpoCountEl = document.getElementById('fpoCount');
+
+  // Update pagination state
+  if (newPageSize) {
+    pageSize = newPageSize;
+    currentPage = 1; // Reset to first page when changing page size
+  } else {
+    currentPage = page;
+  }
+
+  try {
+    // Show loading state
+    loadingEl.classList.remove('hidden');
+    containerEl.classList.add('hidden');
+    emptyEl.classList.add('hidden');
+
+    // Get current filters
+    const state = document.getElementById('state') ? document.getElementById('state').value : '';
+    const promotingAgency = document.getElementById('promoting_agency') ? document.getElementById('promoting_agency').value : '';
+    const scoreCategory = document.getElementById('score_category') ? document.getElementById('score_category').value : '';
+    const financialYear = document.getElementById('financial_year') ? document.getElementById('financial_year').value : '';
+    const startDatetime = document.getElementById('start_datetime') ? document.getElementById('start_datetime').value : '';
+    const endDatetime = document.getElementById('end_datetime') ? document.getElementById('end_datetime').value : '';
+    const fpoName = document.getElementById('fpo_name') ? document.getElementById('fpo_name').value : '';
+
+    // Build URL with filters and pagination
+    const params = new URLSearchParams();
+    if (state) params.append('state', state);
+    if (promotingAgency) params.append('promoting_agency', promotingAgency);
+    if (scoreCategory) params.append('score_category', scoreCategory);
+    if (financialYear) params.append('financial_year', financialYear);
+    if (startDatetime) params.append('start_datetime', startDatetime);
+    if (endDatetime) params.append('end_datetime', endDatetime);
+    if (fpoName) params.append('fpo_name', fpoName);
+    if (searchTerm) params.append('search', searchTerm);
+    if (page) params.append('page', page);
+    if (pageSize) params.append('page_size', pageSize);
+
+    const url = `{% url 'fpo:api_fpo_table_data' %}?${params.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        // Authentication error
+        showMessage('Please log in to view FPOs data', 'error');
+        closeFpoTable();
+        return;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.fpos) {
+      // Update pagination state
+      if (data.pagination) {
+        currentPage = data.pagination.current_page;
+        totalFpoCount = data.pagination.total_count;
+        totalPages = data.pagination.total_pages;
+        pageSize = data.pagination.page_size;
+      }
+
+      // Update FPO count with total count
+      if (fpoCountEl) fpoCountEl.textContent = data.total_count || data.fpos.length;
+
+      // Clear existing table content
+      if (tableBody) tableBody.innerHTML = '';
+
+      if (data.fpos.length === 0) {
+        // Show empty state when FPO list is empty from API
+        const emptyTitleEl = document.getElementById('fpoTableEmptyTitle');
+        const emptyMessageEl = document.getElementById('fpoTableEmptyMessage');
+
+        console.log('Debug: Empty title element found:', !!emptyTitleEl);
+        console.log('Debug: Empty message element found:', !!emptyMessageEl);
+        console.log('Debug: Empty element found:', !!emptyEl);
+
+        // Show simple empty message for any empty result
+        if (emptyTitleEl) {
+          emptyTitleEl.textContent = 'No FPOs found';
+        } else {
+          console.error('fpoTableEmptyTitle element not found - creating fallback');
+          // Fallback: create title element if not found
+          if (emptyEl) {
+            let titleEl = document.getElementById('fpoTableEmptyTitle');
+            if (!titleEl) {
+              titleEl = document.createElement('p');
+              titleEl.id = 'fpoTableEmptyTitle';
+              titleEl.className = 'text-lg';
+              titleEl.textContent = 'No FPOs found';
+              emptyEl.appendChild(titleEl);
+            }
+          }
+        }
+
+        if (emptyMessageEl) {
+          emptyMessageEl.textContent = 'Try adjusting your filters or search criteria';
+        } else {
+          console.error('fpoTableEmptyMessage element not found - creating fallback');
+          // Fallback: create message element if not found
+          if (emptyEl) {
+            let messageEl = document.getElementById('fpoTableEmptyMessage');
+            if (!messageEl) {
+              messageEl = document.createElement('p');
+              messageEl.id = 'fpoTableEmptyMessage';
+              messageEl.className = 'text-sm';
+              messageEl.textContent = 'Try adjusting your filters or search criteria';
+              emptyEl.appendChild(messageEl);
+            }
+          }
+        }
+
+        console.log('FPO list is empty from API - showing empty message');
+        loadingEl.classList.add('hidden');
+        containerEl.classList.add('hidden');
+        if (emptyEl) {
+          emptyEl.classList.remove('hidden');
+          console.log('Empty state shown successfully');
+        } else {
+          console.error('fpoTableEmpty element not found - creating fallback');
+          // Fallback: create empty state container if not found
+          const container = document.querySelector('#fpoTableDrawer .flex-1.overflow-hidden');
+          if (container) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.id = 'fpoTableEmpty';
+            emptyDiv.className = 'flex flex-col items-center justify-center h-64 text-muted-foreground';
+            emptyDiv.innerHTML = `
+              <i class="fa fa-table text-4xl mb-4"></i>
+              <p class="text-lg" id="fpoTableEmptyTitle">No FPOs found</p>
+              <p class="text-sm" id="fpoTableEmptyMessage">Try adjusting your filters or search criteria</p>
+            `;
+            container.appendChild(emptyDiv);
+            emptyDiv.classList.remove('hidden');
+          }
+        }
+      } else {
+        // Populate table
+        data.fpos.forEach((fpo, index) => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-muted/50 transition-colors';
+
+          row.innerHTML = `
+            <td class="px-3 py-3 text-sm text-muted-foreground whitespace-nowrap">${((data.pagination.current_page-1) * 8) + (index + 1)}</td>
+            <td class="px-3 py-3 text-sm font-medium text-foreground min-w-[150px]">${escapeHtml(fpo.fpo_name)}</td>
+            <td class="px-3 py-3 text-sm text-muted-foreground min-w-[120px]">${escapeHtml(fpo.promoting_agency)}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.final_score ? fpo.final_score.toFixed(2) : 'N/A'}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.governance_score ? fpo.governance_score.toFixed(2) : 'N/A'}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.operations_score ? fpo.operations_score.toFixed(2) : 'N/A'}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.systems_score ? fpo.systems_score.toFixed(2) : 'N/A'}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.finance_score ? fpo.finance_score.toFixed(2) : 'N/A'}</td>
+            <td class="px-3 py-3 text-sm font-medium whitespace-nowrap">${fpo.age ? fpo.age.toFixed(1) : 'N/A'}</td>
+          `;
+
+          if (tableBody) tableBody.appendChild(row);
+        });
+
+        // Show table container
+        loadingEl.classList.add('hidden');
+        containerEl.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
+
+        // Update pagination controls
+        updatePaginationControls();
+      }
+    } else {
+      throw new Error(data.error || 'Failed to load FPOs data');
+    }
+
+  } catch (error) {
+    console.error('Error loading FPOs table data:', error);
+    showMessage('Error loading FPOs data. Please try again.', 'error');
+
+    // Show error state
+    loadingEl.classList.add('hidden');
+    containerEl.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
+  }
+}
+
+// Pagination functions
+function updatePaginationControls() {
+  const paginationContainer = document.getElementById('fpoTablePagination');
+  if (!paginationContainer) return;
+
+  // Update page info
+  const pageStartEl = document.getElementById('pageStart');
+  const pageEndEl = document.getElementById('pageEnd');
+  const totalCountEl = document.getElementById('totalCount');
+
+  // Ensure all values are valid numbers
+  const totalCount = parseInt(totalFpoCount) || 0;
+  const currentPageNum = parseInt(currentPage) || 1;
+  const pageSizeNum = parseInt(pageSize) || 10;
+
+  const start = totalCount > 0 ? (currentPageNum - 1) * pageSizeNum + 1 : 0;
+  const end = totalCount > 0 ? Math.min(currentPageNum * pageSizeNum, totalCount) : 0;
+
+  if (pageStartEl) pageStartEl.textContent = start;
+  if (pageEndEl) pageEndEl.textContent = end;
+  if (totalCountEl) totalCountEl.textContent = totalCount;
+
+
+  // Update navigation buttons
+  const prevBtn = document.getElementById('prevPageBtn');
+  const nextBtn = document.getElementById('nextPageBtn');
+  const totalPagesNum = parseInt(totalPages) || 1;
+
+  if (prevBtn) {
+    prevBtn.disabled = currentPageNum <= 1;
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentPageNum >= totalPagesNum;
+  }
+
+  // Update page numbers
+  updatePageNumbers();
+}
+
+function updatePageNumbers() {
+  const pageNumbersContainer = document.getElementById('pageNumbers');
+  if (!pageNumbersContainer) return;
+
+  pageNumbersContainer.innerHTML = '';
+
+  // Parse values to ensure they're valid numbers
+  const currentPageNum = parseInt(currentPage) || 1;
+  const totalPagesNum = parseInt(totalPages) || 1;
+
+  // Show page numbers logic
+  let startPage = Math.max(1, currentPageNum - 2);
+  let endPage = Math.min(totalPagesNum, startPage + 4);
+
+  if (endPage - startPage < 4) {
+    startPage = Math.max(1, endPage - 4);
+  }
+
+  // Add first page and ellipsis if needed
+  if (startPage > 1) {
+    addPageButton(1);
+    if (startPage > 2) {
+      addEllipsis();
+    }
+  }
+
+  // Add page numbers
+  for (let i = startPage; i <= endPage; i++) {
+    addPageButton(i);
+  }
+
+  // Add ellipsis and last page if needed
+  if (endPage < totalPagesNum) {
+    if (endPage < totalPagesNum - 1) {
+      addEllipsis();
+    }
+    addPageButton(totalPagesNum);
+  }
+}
+
+function addPageButton(pageNum) {
+  const pageNumbersContainer = document.getElementById('pageNumbers');
+  if (!pageNumbersContainer) return;
+
+  const currentPageNum = parseInt(currentPage) || 1;
+  const button = document.createElement('button');
+  button.textContent = pageNum;
+  button.className = pageNum === currentPageNum
+    ? 'px-3 py-1 bg-primary text-primary-foreground rounded-lg text-sm'
+    : 'px-3 py-1 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/90 transition-colors';
+  button.onclick = () => goToPage(pageNum);
+  pageNumbersContainer.appendChild(button);
+}
+
+function addEllipsis() {
+  const pageNumbersContainer = document.getElementById('pageNumbers');
+  if (!pageNumbersContainer) return;
+
+  const ellipsis = document.createElement('span');
+  ellipsis.textContent = '...';
+  ellipsis.className = 'px-2 text-muted-foreground';
+  pageNumbersContainer.appendChild(ellipsis);
+}
+
+function goToPage(page) {
+  const totalPagesNum = parseInt(totalPages) || 1;
+  const currentPageNum = parseInt(currentPage) || 1;
+  if (page >= 1 && page <= totalPagesNum && page !== currentPageNum) {
+    const searchInput = document.getElementById('fpoSearchInput');
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+    loadFpoTableData(searchTerm, page);
+  }
+}
+
+function goToPreviousPage() {
+  const currentPageNum = parseInt(currentPage) || 1;
+  if (currentPageNum > 1) {
+    goToPage(currentPageNum - 1);
+  }
+}
+
+function goToNextPage() {
+  const currentPageNum = parseInt(currentPage) || 1;
+  const totalPagesNum = parseInt(totalPages) || 1;
+  if (currentPageNum < totalPagesNum) {
+    goToPage(currentPageNum + 1);
+  }
+}
+
+
+// Download FPO Table as CSV
+async function downloadFpoTableCSV() {
+  try {
+    // Show loading state
+    const loadingEl = document.getElementById('fpoTableLoading');
+    const containerEl = document.getElementById('fpoTableContainer');
+
+    if (loadingEl && containerEl) {
+      loadingEl.classList.remove('hidden');
+      containerEl.classList.add('hidden');
+    }
+
+    // Get current filters
+    const state = document.getElementById('state') ? document.getElementById('state').value : '';
+    const promotingAgency = document.getElementById('promoting_agency') ? document.getElementById('promoting_agency').value : '';
+    const scoreCategory = document.getElementById('score_category') ? document.getElementById('score_category').value : '';
+    const financialYear = document.getElementById('financial_year') ? document.getElementById('financial_year').value : '';
+    const startDatetime = document.getElementById('start_datetime') ? document.getElementById('start_datetime').value : '';
+    const endDatetime = document.getElementById('end_datetime') ? document.getElementById('end_datetime').value : '';
+    const fpoName = document.getElementById('fpo_name') ? document.getElementById('fpo_name').value : '';
+    const searchInput = document.getElementById('fpoSearchInput');
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+    // Build URL with filters (no pagination - get all records)
+    const params = new URLSearchParams();
+    if (state) params.append('state', state);
+    if (promotingAgency) params.append('promoting_agency', promotingAgency);
+    if (scoreCategory) params.append('score_category', scoreCategory);
+    if (financialYear) params.append('financial_year', financialYear);
+    if (startDatetime) params.append('start_datetime', startDatetime);
+    if (endDatetime) params.append('end_datetime', endDatetime);
+    if (fpoName) params.append('fpo_name', fpoName);
+    if (searchTerm) params.append('search', searchTerm);
+    params.append('page_size', '10000'); // Get all records
+
+    const url = `{% url 'fpo:api_fpo_table_data' %}?${params.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.fpos && data.fpos.length > 0) {
+      // Convert to CSV
+      const csvContent = convertFposToCSV(data.fpos);
+
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `fpos_table_${date}.csv`;
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showMessage(`Downloaded ${data.fpos.length} FPOs as CSV`, 'success');
+    } else {
+      showMessage('No FPO data available to download', 'warning');
+    }
+
+  } catch (error) {
+    console.error('Error downloading FPO table CSV:', error);
+    showMessage('Error downloading CSV file. Please try again.', 'error');
+  } finally {
+    // Restore table view
+    const loadingEl = document.getElementById('fpoTableLoading');
+    const containerEl = document.getElementById('fpoTableContainer');
+
+    if (loadingEl && containerEl) {
+      loadingEl.classList.add('hidden');
+      containerEl.classList.remove('hidden');
+    }
+  }
+}
+
+// Convert FPO data to CSV format
+function convertFposToCSV(fpos) {
+  // Define CSV headers
+  const headers = [
+    'Sr. No.',
+    'FPO Name',
+    'Promoting Agency',
+    'Final Score',
+    'Governance Score',
+    'Operations Score',
+    'Systems Score',
+    'Finance Score',
+    'Age (years)'
+  ];
+
+  // Create CSV header row
+  let csv = headers.join(',') + '\n';
+
+  // Add data rows
+  fpos.forEach((fpo, index) => {
+    const row = [
+      index + 1,
+      `"${escapeCSV(fpo.fpo_name)}"`,
+      `"${escapeCSV(fpo.promoting_agency)}"`,
+      fpo.final_score ? fpo.final_score.toFixed(2) : 'N/A',
+      fpo.governance_score ? fpo.governance_score.toFixed(2) : 'N/A',
+      fpo.operations_score ? fpo.operations_score.toFixed(2) : 'N/A',
+      fpo.systems_score ? fpo.systems_score.toFixed(2) : 'N/A',
+      fpo.finance_score ? fpo.finance_score.toFixed(2) : 'N/A',
+      fpo.age ? fpo.age.toFixed(1) : 'N/A'
+    ];
+    csv += row.join(',') + '\n';
+  });
+
+  return csv;
+}
+
+// Escape CSV special characters
+function escapeCSV(text) {
+  if (!text) return '';
+  // Convert to string and escape quotes
+  const str = String(text);
+  return str.replace(/"/g, '""');
+}
+
+// Show message notification
+function showMessage(message, type = 'info') {
+  let messageDiv = document.getElementById('message-notification');
+  if (!messageDiv) {
+    messageDiv = document.createElement('div');
+    messageDiv.id = 'message-notification';
+    messageDiv.className = 'fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 max-w-md';
+    messageDiv.style.display = 'none';
+    document.body.appendChild(messageDiv);
+  }
+
+  // Set color based on type
+  let bgColor = 'bg-primary text-primary-foreground';
+  let icon = 'fa-info-circle';
+
+  if (type === 'success') {
+    bgColor = 'bg-green-600 text-white';
+    icon = 'fa-check-circle';
+  } else if (type === 'error') {
+    bgColor = 'bg-destructive text-destructive-foreground';
+    icon = 'fa-exclamation-triangle';
+  } else if (type === 'warning') {
+    bgColor = 'bg-yellow-600 text-white';
+    icon = 'fa-exclamation-circle';
+  }
+
+  messageDiv.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 max-w-md ${bgColor}`;
+  messageDiv.innerHTML = `
+    <div class="flex items-center">
+      <i class="fa ${icon} mr-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  messageDiv.style.display = 'block';
+
+  setTimeout(() => {
+    messageDiv.style.display = 'none';
+  }, 3000);
+}
+
+function getScoreCategory(score) {
+  if (!score) return 'Poor';
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
+  if (score >= 40) return 'Average';
+  return 'Poor';
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Add search input event listener for real-time search
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('fpoSearchInput');
+  if (searchInput) {
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchFpos();
+      }, 300); // Debounce search
+    });
+  }
+});
+
+function clearAllFilters() {
+  // Clear filter values with null checks
+  const stateElement = document.getElementById('state');
+  if (stateElement) stateElement.value = '';
+
+  const promotingAgencyElement = document.getElementById('promoting_agency');
+  if (promotingAgencyElement) promotingAgencyElement.value = '';
+
+  const scoreCategoryElement = document.getElementById('score_category');
+  if (scoreCategoryElement) scoreCategoryElement.value = '';
+
+  const financialYearElement = document.getElementById('financial_year');
+  if (financialYearElement) financialYearElement.value = '';
+
+  const startDatetimeElement = document.getElementById('start_datetime');
+  if (startDatetimeElement) {
+    startDatetimeElement.value = '';
+    if (startDatetimeElement._flatpickr) {
+      startDatetimeElement._flatpickr.clear();
+    }
+  }
+
+  const endDatetimeElement = document.getElementById('end_datetime');
+  if (endDatetimeElement) {
+    endDatetimeElement.value = '';
+    if (endDatetimeElement._flatpickr) {
+      endDatetimeElement._flatpickr.clear();
+    }
+  }
+
+  const fpoNameElement = document.getElementById('fpo_name');
+  if (fpoNameElement) fpoNameElement.value = '';
+
+  const governanceFocusElement = document.getElementById('governance_focus');
+  if (governanceFocusElement) governanceFocusElement.value = 'second_line_management';
+
+  const governanceMetricElement = document.getElementById('governance_metric');
+  if (governanceMetricElement) governanceMetricElement.value = 'governance_score';
+
+  const operationsFocusElement = document.getElementById('operations_focus');
+  if (operationsFocusElement) operationsFocusElement.value = 'price_volatility';
+
+  const operationsMetricElement = document.getElementById('operations_metric');
+  if (operationsMetricElement) operationsMetricElement.value = 'price_volatility';
+
+  const systemsFocusElement = document.getElementById('systems_focus');
+  if (systemsFocusElement) systemsFocusElement.value = 'accounts_mis';
+
+  const systemsMetricElement = document.getElementById('systems_metric');
+  if (systemsMetricElement) systemsMetricElement.value = 'accounts_mis';
+
+  const financeFocusElement = document.getElementById('finance_focus');
+  if (financeFocusElement) financeFocusElement.value = 'net_profit';
+
+  const financeMetricElement = document.getElementById('finance_metric');
+  if (financeMetricElement) financeMetricElement.value = 'net_profit';
+
+  const reportSectionElement = document.getElementById('report_section');
+  if (reportSectionElement) reportSectionElement.value = 'overview';
+  window.currentTab = 'size';
+
+  applyReportSectionSelection('overview', false);
+  initializeTabs();
+
+  // Show loading indicator
+  const loadingIndicator = document.getElementById('turbo-loading');
+  if (loadingIndicator) {
+    loadingIndicator.classList.remove('hidden');
+  }
+
+  // Fetch updated stats data via API (empty params = no filters)
+  fetchStatsData();
+
+  // Fetch updated chart data via API
+  fetchChartData();
+}
+
+// Chart.js configuration and data
+window.charts = {
+  chart1: null,
+  chart2: null,
+  trend: null
+};
+
+window.currentTab = 'size';
+window.currentReportSection = 'overview';
+window.currentScoreType = 'overview';  // Default score type for Score Analysis
+window.chartData = {
+  chart1: {},
+  chart2: {},
+  trend: {years: [], avg_score: [], governance: [], operations: [], systems: [], financial: []}
+};
+window.latestStats = null;
+
+// Tab categories configuration
+const tabCategories = [
+  { value: 'size', label: 'Size' },
+  { value: 'gender', label: 'Gender' },
+  { value: 'agency', label: 'Agency' },
+  { value: 'state', label: 'State' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'lending', label: 'Lending' }
+];
+
+const scoreTypes = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'governance', label: 'Governance' },
+  { value: 'operations', label: 'Operations' },
+  { value: 'systems', label: 'Process and Systems' },
+  { value: 'finance', label: 'Finance' }
+];
+
+const governanceFocusLabels = {
+  second_line_management: 'Second Line of Management',
+  minutes_fpo_meetings: 'Minutes of FPO Meetings',
+  promoting_agencies: 'Promoting Agencies',
+};
+
+const governanceMetricLabels = {
+  governance_score: 'Governance Score',
+  active_membership: 'Active Membership',
+  quality_bod: 'Quality of BOD',
+  quality_ceo: 'Quality of CEO',
+  mobilization_achievement: 'Mobilization Achievement',
+  optimal_bod_percent: 'Optimal % of BOD',
+};
+
+const operationsFocusLabels = {
+  price_volatility: 'Price Volatility of Products',
+  input_timeliness: 'Timeline for Availability of Inputs',
+  input_affordability: 'Affordability of Inputs',
+  input_place: 'Place for Availability of Inputs',
+  output_distance: 'Distance of output collection centres',
+  credit_history: 'Credit History',
+  type_of_fpo: 'Type of FPO',
+};
+
+const operationsMetricLabels = {
+  price_volatility: 'Price Volatility of Products',
+  input_timeliness: 'Timeline for Availability of Inputs',
+  input_affordability: 'Affordability of Inputs',
+  input_place: 'Place for Availability of Inputs',
+  output_distance: 'Distance of output collection centres',
+  credit_history: 'Credit History',
+  type_of_fpo: 'Type of FPO',
+};
+
+const systemsFocusLabels = {
+  accounts_mis: 'Accounts and MIS',
+  insurance_stock: 'Insurance of Stock',
+  credit_record: 'Credit Record of FPO',
+  statutory_filings: 'Statutory Filings',
+  books_records: 'Books and Records Up to Date',
+  stock_reconciliation: 'Reconciliation of Stocks',
+  penalties_levied: 'Penalties Levied',
+};
+
+const systemsMetricLabels = {
+  accounts_mis: 'Accounts and MIS',
+  insurance_stock: 'Insurance of Stock',
+  credit_record: 'Credit Record of FPO',
+  statutory_filings: 'Statutory Filings',
+  books_records: 'Books and Records Up to Date',
+  stock_reconciliation: 'Reconciliation of Stocks',
+  penalties_levied: 'Penalties Levied',
+};
+
+const financeFocusLabels = {
+  net_profit: 'Net Profit',
+  revenue_per_member: 'Revenue per Member',
+  inventory_period: 'Inventory Period',
+  asset_turnover_ratio: 'Asset Turnover Ratio',
+  accounts_payable: 'Accounts Payable',
+  accounts_receivable: 'Accounts Receivable',
+};
+
+const financeMetricLabels = {
+  net_profit: 'Net Profit',
+  revenue_per_member: 'Revenue per Member',
+  inventory_period: 'Inventory Period',
+  asset_turnover_ratio: 'Asset Turnover Ratio',
+  accounts_payable: 'Accounts Payable',
+  accounts_receivable: 'Accounts Receivable',
+};
+
+function getScoreDataKey(scoreType) {
+  // "Overview" in filter should render the overall/final score dataset.
+  return scoreType === 'overview' ? 'final' : scoreType;
+}
+
+function normalizeReportSection(section) {
+  const allowedSections = ['overview', 'governance', 'operations', 'systems', 'finance'];
+  return allowedSections.includes(section) ? section : 'overview';
+}
+
+function initializeDateTimePickers() {
+  if (typeof flatpickr !== 'function') {
+    return;
+  }
+
+  const startInput = document.getElementById('start_datetime');
+  const endInput = document.getElementById('end_datetime');
+
+  if (startInput && !startInput._flatpickr) {
+    flatpickr(startInput, {
+      enableTime: true,
+      time_24hr: false,
+      dateFormat: 'Y-m-d\\TH:i:S',
+      altInput: true,
+      altFormat: 'M j, Y h:i K',
+      allowInput: true,
+    });
+  }
+
+  if (endInput && !endInput._flatpickr) {
+    flatpickr(endInput, {
+      enableTime: true,
+      time_24hr: false,
+      dateFormat: 'Y-m-d\\TH:i:S',
+      altInput: true,
+      altFormat: 'M j, Y h:i K',
+      allowInput: true,
+    });
+  }
+
+  if (startInput && startInput._flatpickr && endInput && endInput._flatpickr) {
+    const startPicker = startInput._flatpickr;
+    const endPicker = endInput._flatpickr;
+
+    const syncBounds = () => {
+      endPicker.set('minDate', startInput.value || null);
+      startPicker.set('maxDate', endInput.value || null);
+    };
+
+    syncBounds();
+    startPicker.config.onChange = [syncBounds];
+    endPicker.config.onChange = [syncBounds];
+  }
+}
+
+function buildReportParams() {
+  const params = new URLSearchParams();
+  const state = document.getElementById('state')?.value || '';
+  const promotingAgency = document.getElementById('promoting_agency')?.value || '';
+  const scoreCategory = document.getElementById('score_category')?.value || '';
+  const financialYear = document.getElementById('financial_year')?.value || '';
+  const startDatetime = document.getElementById('start_datetime')?.value || '';
+  const endDatetime = document.getElementById('end_datetime')?.value || '';
+  const fpoName = document.getElementById('fpo_name')?.value || '';
+  const reportSection = normalizeReportSection(document.getElementById('report_section')?.value || 'overview');
+  const governanceFocus = document.getElementById('governance_focus')?.value || '';
+  const governanceMetric = document.getElementById('governance_metric')?.value || '';
+  const operationsFocus = document.getElementById('operations_focus')?.value || '';
+  const operationsMetric = document.getElementById('operations_metric')?.value || '';
+  const systemsFocus = document.getElementById('systems_focus')?.value || '';
+  const systemsMetric = document.getElementById('systems_metric')?.value || '';
+  const financeFocus = document.getElementById('finance_focus')?.value || '';
+  const financeMetric = document.getElementById('finance_metric')?.value || '';
+
+  if (state) params.set('state', state);
+  if (promotingAgency) params.set('promoting_agency', promotingAgency);
+  if (scoreCategory) params.set('score_category', scoreCategory);
+  if (financialYear) params.set('financial_year', financialYear);
+  if (startDatetime) params.set('start_datetime', startDatetime);
+  if (endDatetime) params.set('end_datetime', endDatetime);
+  if (fpoName) params.set('fpo_name', fpoName);
+  if (reportSection && reportSection !== 'overview') params.set('report_section', reportSection);
+
+  if (reportSection === 'governance') {
+    if (governanceFocus) params.set('governance_focus', governanceFocus);
+    if (governanceMetric) params.set('governance_metric', governanceMetric);
+  }
+
+  if (reportSection === 'operations') {
+    if (operationsFocus) params.set('operations_focus', operationsFocus);
+    if (operationsMetric) params.set('operations_metric', operationsMetric);
+  }
+
+  if (reportSection === 'systems') {
+    if (systemsFocus) params.set('systems_focus', systemsFocus);
+    if (systemsMetric) params.set('systems_metric', systemsMetric);
+  }
+
+  if (reportSection === 'finance') {
+    if (financeFocus) params.set('finance_focus', financeFocus);
+    if (financeMetric) params.set('finance_metric', financeMetric);
+  }
+
+  return params;
+}
+
+function getTrendSeriesKey(section) {
+  const normalizedSection = normalizeReportSection(section);
+  if (normalizedSection === 'overview') {
+    return 'all';
+  }
+  if (normalizedSection === 'finance') {
+    return 'financial';
+  }
+  return normalizedSection;
+}
+
+function formatSectionLabel(section) {
+  const mapping = {
+    overview: 'Overview',
+    governance: 'Governance',
+    operations: 'Operations',
+    systems: 'Process and Systems',
+    finance: 'Finance'
+  };
+  return mapping[normalizeReportSection(section)] || 'Overview';
+}
+
+function getSelectedGovernanceFocusLabel() {
+  const focus = document.getElementById('governance_focus')?.value || 'second_line_management';
+  return governanceFocusLabels[focus] || 'Governance Focus';
+}
+
+function getSelectedGovernanceMetricLabel() {
+  const metric = document.getElementById('governance_metric')?.value || 'governance_score';
+  return governanceMetricLabels[metric] || 'Governance Score';
+}
+
+function getSelectedOperationsFocusLabel() {
+  const focus = document.getElementById('operations_focus')?.value || 'price_volatility';
+  return operationsFocusLabels[focus] || 'Operations Focus';
+}
+
+function getSelectedOperationsMetricLabel() {
+  const metric = document.getElementById('operations_metric')?.value || 'price_volatility';
+  return operationsMetricLabels[metric] || 'Operations';
+}
+
+function getSelectedSystemsFocusLabel() {
+  const focus = document.getElementById('systems_focus')?.value || 'accounts_mis';
+  return systemsFocusLabels[focus] || 'Process and Systems Focus';
+}
+
+function getSelectedSystemsMetricLabel() {
+  const metric = document.getElementById('systems_metric')?.value || 'accounts_mis';
+  return systemsMetricLabels[metric] || 'Process and Systems';
+}
+
+function getSelectedFinanceFocusLabel() {
+  const focus = document.getElementById('finance_focus')?.value || 'net_profit';
+  return financeFocusLabels[focus] || 'Finance Focus';
+}
+
+function getSelectedFinanceMetricLabel() {
+  const metric = document.getElementById('finance_metric')?.value || 'net_profit';
+  return financeMetricLabels[metric] || 'Finance';
+}
+
+function getActiveScoreLabel() {
+  if (window.currentReportSection === 'governance') {
+    return getSelectedGovernanceMetricLabel();
+  }
+
+  if (window.currentReportSection === 'operations') {
+    return getSelectedOperationsMetricLabel();
+  }
+
+  if (window.currentReportSection === 'systems') {
+    return getSelectedSystemsMetricLabel();
+  }
+
+  if (window.currentReportSection === 'finance') {
+    return getSelectedFinanceMetricLabel();
+  }
+
+  return getScoreTypeLabel();
+}
+
+function updatePageTitleForSection(section) {
+  const titleEl = document.getElementById('reportsPageTitle');
+  if (!titleEl) {
+    return;
+  }
+
+  const normalizedSection = normalizeReportSection(section);
+  if (normalizedSection === 'overview') {
+    titleEl.textContent = 'FPO Reports';
+    return;
+  }
+
+  titleEl.textContent = normalizedSection === 'governance'
+    ? 'Governance'
+    : `FPO Reports - ${formatSectionLabel(normalizedSection)}`;
+}
+
+function updateMainHeadingForSection(section) {
+  const headingEl = document.getElementById('mainDashboardHeading');
+  const subheadingEl = document.getElementById('mainDashboardSubheading');
+  const normalizedSection = normalizeReportSection(section);
+
+  if (!headingEl) {
+    return;
+  }
+
+  const headingConfig = {
+    overview: {
+      heading: 'FPO Performance Overview',
+      subheading: 'Scoring, governance and financial insight across the portfolio'
+    },
+    governance: {
+      heading: 'Governance',
+      subheading: 'Governance-specific insights and performance trends across FPOs'
+    },
+    operations: {
+      heading: 'Operations',
+      subheading: 'Operations-specific insights and performance trends across FPOs'
+    },
+    systems: {
+      heading: 'Process and Systems',
+      subheading: 'Process and systems performance trends across FPOs'
+    },
+    finance: {
+      heading: 'Finance',
+      subheading: 'Finance-specific insights and performance trends across FPOs'
+    }
+  };
+
+  const config = headingConfig[normalizedSection] || headingConfig.overview;
+  headingEl.textContent = config.heading;
+
+  if (subheadingEl) {
+    subheadingEl.textContent = config.subheading;
+  }
+}
+
+function toggleGovernanceExtraFilters(section) {
+  const normalizedSection = normalizeReportSection(section);
+  const governanceCardFilters = document.querySelectorAll('.governance-card-filter');
+  const operationsCardFilters = document.querySelectorAll('.operations-card-filter');
+  const systemsCardFilters = document.querySelectorAll('.systems-card-filter');
+  const financeCardFilters = document.querySelectorAll('.finance-card-filter');
+
+  governanceCardFilters.forEach((filterEl) => {
+    filterEl.classList.toggle('is-active', normalizedSection === 'governance');
+  });
+
+  operationsCardFilters.forEach((filterEl) => {
+    filterEl.classList.toggle('is-active', normalizedSection === 'operations');
+  });
+
+  systemsCardFilters.forEach((filterEl) => {
+    filterEl.classList.toggle('is-active', normalizedSection === 'systems');
+  });
+
+  financeCardFilters.forEach((filterEl) => {
+    filterEl.classList.toggle('is-active', normalizedSection === 'finance');
+  });
+
+  updateSectionFiltersSubheading(normalizedSection);
+}
+
+function updateSectionFiltersSubheading(section) {
+  const subheadingEl = document.getElementById('sectionFiltersSubheading');
+  const subheadingTextEl = document.getElementById('sectionFiltersSubheadingText');
+  if (!subheadingEl || !subheadingTextEl) {
+    return;
+  }
+
+  const normalizedSection = normalizeReportSection(section);
+  const textBySection = {
+    governance: 'Governance Filters',
+    operations: 'Operations Filters',
+    systems: 'Process and Systems Filters',
+    finance: 'Finance Filters',
+  };
+
+  const headingText = textBySection[normalizedSection] || '';
+  if (headingText) {
+    subheadingTextEl.textContent = headingText;
+    subheadingEl.classList.add('is-active');
+  } else {
+    subheadingTextEl.textContent = '';
+    subheadingEl.classList.remove('is-active');
+  }
+}
+
+function updateTopSummaryForSection(section, stats = null) {
+  const normalizedSection = normalizeReportSection(section);
+  const firstCardLabel = document.getElementById('stat-total-fpos-label');
+  const firstTooltipTitle = document.getElementById('stat-total-fpos-tooltip-title');
+  const firstTooltipDesc = document.getElementById('stat-total-fpos-tooltip-desc');
+
+  if (!firstCardLabel || !firstTooltipTitle || !firstTooltipDesc) {
+    return;
+  }
+
+  const summaryConfig = {
+    overview: {
+      label: 'Total FPOs',
+      tooltip: 'Total FPOs',
+      description: 'Total number of active Farmer Producer Organizations currently registered and tracked in the system.',
+      statKey: 'total_fpos_count',
+      format: 'integer',
+    },
+    governance: {
+      label: 'Total Governance Score',
+      tooltip: 'Total Governance Score',
+      description: 'Average governance score across the currently filtered FPOs.',
+      statKey: 'avg_governance_score',
+      format: 'decimal',
+    },
+    operations: {
+      label: 'Total Operations Score',
+      tooltip: 'Total Operations Score',
+      description: 'Average operations score across the currently filtered FPOs.',
+      statKey: 'avg_operations_score',
+      format: 'decimal',
+    },
+    systems: {
+      label: 'Total Systems Score',
+      tooltip: 'Total Systems Score',
+      description: 'Average systems score across the currently filtered FPOs.',
+      statKey: 'avg_systems_score',
+      format: 'decimal',
+    },
+    finance: {
+      label: 'Total Finance Score',
+      tooltip: 'Total Finance Score',
+      description: 'Average finance score across the currently filtered FPOs.',
+      statKey: 'avg_financial_score',
+      format: 'decimal',
+    },
+  };
+
+  const config = summaryConfig[normalizedSection] || summaryConfig.overview;
+  firstCardLabel.innerHTML = `${config.label} <i class="fa fa-info-circle" style="font-size: 10px; margin-left: 4px; opacity: 0.4; vertical-align: middle;"></i>`;
+  firstTooltipTitle.textContent = config.tooltip;
+  firstTooltipDesc.textContent = config.description;
+
+  if (stats && typeof stats[config.statKey] !== 'undefined') {
+    updateStatValue('stat-total-fpos', stats[config.statKey], config.format);
+  }
+}
+
+function updateScoreStatsRowForSection(section) {
+  const row = document.getElementById('score-stats-row');
+  if (!row) {
+    return;
+  }
+
+  const normalizedSection = normalizeReportSection(section);
+  const cards = row.querySelectorAll('[data-score-section]');
+
+  if (normalizedSection === 'governance' || normalizedSection === 'operations' || normalizedSection === 'systems' || normalizedSection === 'finance') {
+    row.style.display = 'none';
+    cards.forEach(card => {
+      card.style.display = '';
+    });
+    return;
+  }
+
+  row.style.display = 'grid';
+
+  if (normalizedSection === 'overview') {
+    row.style.gridTemplateColumns = 'repeat(5, 1fr)';
+    cards.forEach(card => {
+      card.style.display = '';
+    });
+    return;
+  }
+
+  row.style.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
+  cards.forEach(card => {
+    const cardSection = card.getAttribute('data-score-section');
+    card.style.display = cardSection === normalizedSection ? '' : 'none';
+  });
+}
+
+function applyReportSectionSelection(section, refreshCharts = true, updateSummaryWidgets = true) {
+  const normalizedSection = normalizeReportSection(section);
+  window.currentReportSection = normalizedSection;
+  window.currentScoreType = normalizedSection;
+
+  const sectionFilter = document.getElementById('report_section');
+  if (sectionFilter && sectionFilter.value !== normalizedSection) {
+    sectionFilter.value = normalizedSection;
+  }
+
+  const scoreLabel = document.getElementById('chart2CategoryLabel');
+  if (scoreLabel) {
+    scoreLabel.textContent = getActiveScoreLabel();
+  }
+
+  updatePageTitleForSection(normalizedSection);
+  updateMainHeadingForSection(normalizedSection);
+  toggleGovernanceExtraFilters(normalizedSection);
+  updateScoreStatsRowForSection(normalizedSection);
+
+  if (updateSummaryWidgets) {
+    updateTopSummaryForSection(normalizedSection, window.latestStats || null);
+  }
+
+  if (refreshCharts) {
+    updateChart2();
+    updateTrendChart();
+  }
+}
+
+function onReportSectionFilterChange() {
+  const sectionFilter = document.getElementById('report_section');
+  const selectedSection = sectionFilter ? sectionFilter.value : 'overview';
+  // Section dropdown should only change visible controls. Data cards update on Apply.
+  applyReportSectionSelection(selectedSection, false, false);
+}
+
+// Color palette for Chart.js using custom colors
+const chartColors = [
+  '#1b52ff',  // Bright blue
+  '#114081',  // Dark blue
+  '#0d5418',  // Dark green
+  '#c6bc14',  // Yellow
+  '#c9b5f1',  // Light purple
+  '#1b52ff',  // Bright blue (repeat)
+  '#114081',  // Dark blue (repeat)
+  '#0d5418',  // Dark green (repeat)
+  '#c6bc14',  // Yellow (repeat)
+  '#c9b5f1',  // Light purple (repeat)
+  '#1b52ff',  // Bright blue (repeat)
+  '#114081'   // Dark blue (repeat)
+];
+
+// Border colors using darker/saturated versions
+const borderColors = [
+  '#1442cc',  // Darker bright blue
+  '#0d3366',  // Darker dark blue
+  '#0a4013',  // Darker green
+  '#a39b10',  // Darker yellow
+  '#b39de8',  // Darker purple
+  '#1442cc',  // Darker bright blue (repeat)
+  '#0d3366',  // Darker dark blue (repeat)
+  '#0a4013',  // Darker green (repeat)
+  '#a39b10',  // Darker yellow (repeat)
+  '#b39de8',  // Darker purple (repeat)
+  '#1442cc',  // Darker bright blue (repeat)
+  '#0d3366'   // Darker dark blue (repeat)
+];
+
+// Function to get selected tab label
+function getSelectedTabLabel() {
+  const selectedTab = tabCategories.find(t => t.value === window.currentTab);
+  return selectedTab ? selectedTab.label : 'Size';
+}
+
+// Function to get score type label
+function getScoreTypeLabel() {
+  const selectedScore = scoreTypes.find(s => s.value === window.currentScoreType);
+  return selectedScore ? selectedScore.label : 'Overview';
+}
+
+// Function to update FPO Count Analysis card title
+function updateChart1CardTitle() {
+  const cardTitle = document.querySelector('#chart1Canvas').closest('.dashboard-card').querySelector('h3');
+  if (cardTitle) {
+    if (window.currentReportSection === 'governance') {
+      cardTitle.textContent = `FPO numbers by ${getSelectedGovernanceFocusLabel()}`;
+      return;
+    }
+
+    if (window.currentReportSection === 'operations') {
+      cardTitle.textContent = `FPO numbers by ${getSelectedOperationsFocusLabel()}`;
+      return;
+    }
+
+    if (window.currentReportSection === 'systems') {
+      cardTitle.textContent = `FPO numbers by ${getSelectedSystemsFocusLabel()}`;
+      return;
+    }
+
+    if (window.currentReportSection === 'finance') {
+      cardTitle.textContent = `FPO numbers by ${getSelectedFinanceFocusLabel()}`;
+      return;
+    }
+
+    cardTitle.textContent = `FPO numbers by ${getSelectedTabLabel()}`;
+  }
+}
+
+// Function to update Score Analysis card title
+function updateChart2CardTitle() {
+  const cardTitle = document.querySelector('#chart2Canvas')?.closest('.dashboard-card')?.querySelector('h3');
+  if (cardTitle) {
+    cardTitle.textContent = `${getActiveScoreLabel()} by ${getSelectedTabLabel()}`;
+  }
+}
+
+// Function to fetch chart data from API
+async function fetchChartData(params = null) {
+  try {
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.remove('hidden');
+    }
+
+    const queryParams = params ? new URLSearchParams(params) : buildReportParams();
+    queryParams.set('chart1_category', window.currentTab);
+
+    const url = `{% url 'fpo:api_chart_data' %}?${queryParams.toString()}`;
+    const response = await fetch(url);
+    console.log('Response status:', response.status);
+
+    // Check if response is redirect (not authenticated)
+    if (response.status === 302 || response.redirected) {
+      console.error('User not authenticated for API access');
+      showError('Please log in to view chart data.');
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      window.chartData.chart1 = data.chart1;
+      window.chartData.chart2 = data.chart2;
+      if (data.trend) window.chartData.trend = data.trend;
+
+      // Update all charts with new data
+      updateChart1();
+      updateChart2();
+      updateTrendChart();
+    } else {
+      showError('Failed to load chart data. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    showError('Error loading chart data. Please try again.');
+  } finally {
+    // Hide loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.add('hidden');
+    }
+  }
+}
+
+// Function to show error messages
+function showError(message) {
+  let errorDiv = document.getElementById('error-notification');
+  if (!errorDiv) {
+    errorDiv = document.createElement('div');
+    errorDiv.id = 'error-notification';
+    errorDiv.className = 'fixed top-4 right-4 bg-destructive text-destructive-foreground px-4 py-3 rounded-lg shadow-lg z-50 max-w-md';
+    errorDiv.style.display = 'none';
+    document.body.appendChild(errorDiv);
+  }
+
+  errorDiv.innerHTML = `
+    <div class="flex items-center">
+      <i class="fa fa-exclamation-triangle mr-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  errorDiv.style.display = 'block';
+
+  setTimeout(() => {
+    errorDiv.style.display = 'none';
+  }, 5000);
+}
+
+// Create and initialize tabs
+function initializeTabs() {
+  const tabContainer = document.getElementById('chartTabContainer');
+  if (!tabContainer) return;
+
+  tabContainer.innerHTML = tabCategories.map((tab) => `
+    <button
+      onclick="selectTab('${tab.value}')"
+      id="tab-${tab.value}"
+      class="px-4 py-2 text-sm font-medium transition-colors ${
+        tab.value === window.currentTab ? 'border-b-2 text-primary' : 'hover:bg-muted/80'
+      }"
+      style="${tab.value === window.currentTab ? 'border-color: var(--primary-brand); color: var(--primary-brand);' : 'color: #64748b;'}"
+    >
+      ${tab.label}
+    </button>
+  `).join('');
+}
+
+// Select tab and update both charts
+function selectTab(tabValue) {
+  window.currentTab = tabValue;
+
+  // Update tab styles
+  document.querySelectorAll('#chartTabContainer button').forEach(btn => {
+    if (btn.id === `tab-${tabValue}`) {
+      btn.className = 'px-4 py-2 text-sm font-medium transition-colors border-b-2';
+      btn.style.borderColor = 'var(--primary-brand)';
+      btn.style.color = 'var(--primary-brand)';
+    } else {
+      btn.className = 'px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/80';
+      btn.style.borderColor = 'transparent';
+      btn.style.color = '#64748b';
+    }
+  });
+
+  // Update category labels
+  const selectedTab = tabCategories.find(t => t.value === tabValue);
+  const chart1Label = document.getElementById('chart1CategoryLabel');
+  if (chart1Label) {
+    chart1Label.textContent = selectedTab.label;
+  }
+
+  // Update card titles immediately
+  updateChart1CardTitle();
+  updateChart2CardTitle();
+
+  // Fetch new data and update charts
+  fetchChartData();
+}
+
+function updateLegendArrowState(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    return;
+  }
+
+  const nav = container.closest('.chart-legend-nav');
+  if (!nav) {
+    return;
+  }
+
+  const leftBtn = nav.querySelector('[data-dir="left"]');
+  const rightBtn = nav.querySelector('[data-dir="right"]');
+  const maxScrollLeft = container.scrollWidth - container.clientWidth;
+  const hasOverflow = maxScrollLeft > 1;
+
+  if (leftBtn) {
+    leftBtn.disabled = !hasOverflow || container.scrollLeft <= 1;
+  }
+  if (rightBtn) {
+    rightBtn.disabled = !hasOverflow || container.scrollLeft >= maxScrollLeft - 1;
+  }
+}
+
+function scrollLegendBy(containerId, delta) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    return;
+  }
+
+  container.scrollBy({
+    left: delta,
+    behavior: 'smooth'
+  });
+
+  // Smooth scroll updates asynchronously; refresh state shortly after the movement starts.
+  window.setTimeout(() => updateLegendArrowState(containerId), 180);
+}
+
+function hideScrollableLegend(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  const nav = container.closest('.chart-legend-nav');
+  if (nav) {
+    nav.style.display = 'none';
+  }
+}
+
+function renderScrollableLegend(chart, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !chart) {
+    return;
+  }
+
+  const nav = container.closest('.chart-legend-nav');
+
+  const labelsGenerator = chart.options?.plugins?.legend?.labels?.generateLabels
+    || Chart.defaults.plugins.legend.labels.generateLabels;
+  const legendItems = labelsGenerator(chart) || [];
+
+  if (!legendItems.length) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    if (nav) {
+      nav.style.display = 'none';
+    }
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'chart-legend-list';
+
+  legendItems.forEach((item) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `chart-legend-item${item.hidden ? ' is-hidden' : ''}`;
+    button.title = item.text;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'chart-legend-swatch';
+    swatch.style.backgroundColor = item.fillStyle || item.strokeStyle || '#64748b';
+    swatch.style.borderColor = item.strokeStyle || item.fillStyle || '#64748b';
+
+    const text = document.createElement('span');
+    text.className = 'chart-legend-text';
+    text.textContent = item.text;
+
+    button.appendChild(swatch);
+    button.appendChild(text);
+
+    button.addEventListener('click', () => {
+      const type = chart.config.type;
+      const isCircular = type === 'pie' || type === 'doughnut' || type === 'polarArea';
+
+      if (isCircular) {
+        chart.toggleDataVisibility(item.index);
+      } else {
+        chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+      }
+
+      chart.update();
+      renderScrollableLegend(chart, containerId);
+    });
+
+    list.appendChild(button);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+  container.style.display = 'block';
+
+  if (nav) {
+    nav.style.display = 'flex';
+  }
+
+  if (!container.dataset.legendScrollBound) {
+    container.addEventListener('scroll', () => updateLegendArrowState(containerId));
+    container.dataset.legendScrollBound = 'true';
+  }
+
+  updateLegendArrowState(containerId);
+}
+
+// Update Chart 1 (FPO Count Analysis) with Chart.js
+function updateChart1() {
+  const canvas = document.getElementById('chart1Canvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+
+  if (!ctx) {
+    console.warn('Chart 1 canvas not available');
+    return;
+  }
+
+  // Destroy existing chart if it exists
+  if (window.charts.chart1) {
+    window.charts.chart1.destroy();
+    window.charts.chart1 = null;
+  }
+
+  const data = window.chartData.chart1[window.currentTab];
+  const hasMultipleDatasets = Array.isArray(data?.datasets) && data.datasets.length > 0;
+
+  if (!data || !data.categories || data.categories.length === 0) {
+    // Clear canvas and show no data message
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+
+    // Clear summary
+    const detailsElement = document.getElementById('chart1Details');
+    if (detailsElement) detailsElement.innerHTML = '';
+    hideScrollableLegend('chart1Legend');
+    return;
+  }
+
+  // Determine chart type based on current tab
+  const isHorizontal = window.currentTab === 'agency' || hasMultipleDatasets || window.currentReportSection === 'governance';
+  const indexAxis = isHorizontal ? 'y' : 'x';
+  const datasets = hasMultipleDatasets
+    ? data.datasets.map((dataset, index) => ({
+        label: dataset.label,
+        data: dataset.data,
+        backgroundColor: chartColors[index % chartColors.length],
+        borderColor: borderColors[index % borderColors.length],
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: borderColors[index % borderColors.length],
+        hoverBorderWidth: 3,
+      }))
+    : [{
+        label: 'Number of FPOs',
+        data: data.data,
+        backgroundColor: chartColors.slice(0, data.categories.length),
+        borderColor: borderColors.slice(0, data.categories.length),
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: borderColors.slice(0, data.categories.length),
+        hoverBorderWidth: 3,
+      }];
+
+  // Create colorful Chart.js bar chart
+  window.charts.chart1 = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.categories,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: indexAxis,
+      animation: {
+        duration: 1000,
+        easing: 'easeInOutQuart',
+        delay: (context) => {
+          let delay = 0;
+          if (context.type === 'data' && context.mode === 'default') {
+            delay = context.dataIndex * 200 + context.datasetIndex * 100;
+          }
+          return delay;
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 14,
+          displayColors: false,
+          titleFont: {
+            size: 14,
+            weight: 'bold'
+          },
+          bodyFont: {
+            size: 13
+          },
+          callbacks: {
+            title: function(context) {
+              if (window.currentReportSection === 'governance') {
+                return `${getSelectedGovernanceFocusLabel()} - ${context[0].label}`;
+              }
+
+              if (window.currentReportSection === 'operations') {
+                return `${getSelectedOperationsFocusLabel()} - ${context[0].label}`;
+              }
+
+              if (window.currentReportSection === 'systems') {
+                return `${getSelectedSystemsFocusLabel()} - ${context[0].label}`;
+              }
+
+              if (window.currentReportSection === 'finance') {
+                return `${getSelectedFinanceFocusLabel()} - ${context[0].label}`;
+              }
+
+              return `${getSelectedTabLabel()} category of FPO - ${context[0].label}`;
+            },
+            label: function(context) {
+              const value = isHorizontal ? context.parsed.x : context.parsed.y;
+              return hasMultipleDatasets
+                ? `${context.dataset.label}: ${value}`
+                : `Count: ${value}`;
+            },
+          }
+        }
+      },
+      scales: isHorizontal ? {
+        // Horizontal bar chart scales
+        x: {
+          beginAtZero: true,
+          stacked: hasMultipleDatasets,
+          grid: {
+            color: '#f3f4f6',
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8
+          }
+        },
+        y: {
+          stacked: hasMultipleDatasets,
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8,
+            autoSkip: false,
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // For agency tab, show all agency names with 40 character limit
+              if (window.currentTab === 'agency') {
+                return label.length > 30 ? label.substring(0, 27) + '...' : label;
+              }
+              return label;
+            }
+          }
+        }
+      } : {
+        // Vertical bar chart scales (existing logic)
+        y: {
+          beginAtZero: true,
+          stacked: hasMultipleDatasets,
+          grid: {
+            color: '#f3f4f6',
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8
+          }
+        },
+        x: {
+          stacked: hasMultipleDatasets,
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            maxRotation: 0,
+            minRotation: 0,
+            padding: 8,
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // Wrap text at 20 characters per line
+              const maxCharsPerLine = 20;
+              if (label.length > maxCharsPerLine) {
+                const words = label.split(' ');
+                const lines = [];
+                let currentLine = '';
+                words.forEach(word => {
+                  if ((currentLine + word).length <= maxCharsPerLine) {
+                    currentLine += (currentLine ? ' ' : '') + word;
+                  } else {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = word;
+                  }
+                });
+                if (currentLine) lines.push(currentLine);
+                return lines;
+              }
+              return label;
+            }
+          }
+        }
+      },
+      dataset: {
+        maxBarThickness: 36
+      }
+    }
+  });
+
+  const shouldShowChart1Legend = hasMultipleDatasets && window.currentReportSection !== 'overview';
+  if (shouldShowChart1Legend) {
+    renderScrollableLegend(window.charts.chart1, 'chart1Legend');
+  } else {
+    hideScrollableLegend('chart1Legend');
+  }
+
+  
+  // Update summary
+  const detailsElement = document.getElementById('chart1Details');
+
+  if (detailsElement) {
+    detailsElement.innerHTML = data.categories.map((cat, index) =>
+      `<span class="inline-flex items-center"><span class="w-3 h-3 rounded-full mr-1" style="background-color: ${chartColors[index % chartColors.length]}"></span>${cat}: ${data.data[index]}</span>`
+    ).join(' | ');
+  }
+
+  // Update card title with selected tab
+  updateChart1CardTitle();
+}
+
+// Trend Line Chart - Year over Year Score Trends
+function updateTrendChart() {
+  const canvas = document.getElementById('trendCanvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+
+  if (!ctx) {
+    console.warn('Trend chart canvas not available');
+    return;
+  }
+
+  // Destroy existing chart
+  if (window.charts.trend) {
+    window.charts.trend.destroy();
+    window.charts.trend = null;
+  }
+
+  const trend = window.chartData.trend;
+  if (!trend || !trend.years || trend.years.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'center';
+    ctx.fillText('No trend data available', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  const selectedType = getTrendSeriesKey(window.currentReportSection);
+  const primarySeriesKey = 'avg_score';
+  const fullOpacity = 1;
+  const mutedOpacity = 0.6;
+
+  function withOpacity(color, opacity) {
+    if (typeof color !== 'string') {
+      return color;
+    }
+
+    const value = color.trim();
+    if (value.startsWith('#')) {
+      let hex = value.slice(1);
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      if (hex.length === 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+      return color;
+    }
+
+    if (value.startsWith('rgba(')) {
+      return value.replace(/rgba\(([^)]+),\s*[^)]+\)/, `rgba($1, ${opacity})`);
+    }
+
+    if (value.startsWith('rgb(')) {
+      return value.replace(/^rgb\(([^)]+)\)$/, `rgba($1, ${opacity})`);
+    }
+
+    return color;
+  }
+
+  // Dataset configurations
+  const allDatasets = {
+    avg_score: { label: 'Overall Score', data: trend.avg_score, color: '#1b52ff', borderDash: [] },
+    governance: { label: 'Governance', data: trend.governance, color: '#114081', borderDash: [] },
+    operations: { label: 'Operations', data: trend.operations, color: '#0d5418', borderDash: [] },
+    systems: { label: 'Systems', data: trend.systems, color: '#c6bc14', borderDash: [] },
+    financial: { label: 'Financial', data: trend.financial, color: '#9b59b6', borderDash: [] }
+  };
+
+  let datasets = [];
+
+  if (selectedType === 'all') {
+    // Show all lines
+    Object.keys(allDatasets).forEach(key => {
+      const ds = allDatasets[key];
+      const seriesOpacity = key === primarySeriesKey ? fullOpacity : mutedOpacity;
+      datasets.push({
+        label: ds.label,
+        data: ds.data,
+        borderColor: withOpacity(ds.color, seriesOpacity),
+        backgroundColor: withOpacity(ds.color, key === primarySeriesKey ? 0.15 : 0.1),
+        borderWidth: 2.5,
+        borderDash: ds.borderDash,
+        pointBackgroundColor: withOpacity(ds.color, seriesOpacity),
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        tension: 0.3,
+        fill: false
+      });
+    });
+  } else {
+    // Show single line with gradient fill
+    const ds = allDatasets[selectedType];
+    if (ds) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 350);
+      gradient.addColorStop(0, ds.color + '30');
+      gradient.addColorStop(1, ds.color + '05');
+
+      datasets.push({
+        label: ds.label,
+        data: ds.data,
+        borderColor: ds.color,
+        backgroundColor: gradient,
+        borderWidth: 3,
+        pointBackgroundColor: ds.color,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 10,
+        tension: 0.3,
+        fill: true
+      });
+    }
+  }
+
+  // Update title
+  const titleEl = document.getElementById('trendChartTitle');
+  const trendLegendHint = document.getElementById('trendLegendHint');
+  if (titleEl) {
+    if (selectedType === 'all') {
+      titleEl.textContent = 'All Scores Trend Over Years';
+    } else {
+      const ds = allDatasets[selectedType];
+      titleEl.textContent = `${ds ? ds.label : 'Score'} Trend Over Years`;
+    }
+  }
+  if (trendLegendHint) {
+    trendLegendHint.style.display = selectedType === 'all' ? 'block' : 'none';
+  }
+
+  window.charts.trend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trend.years,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 800,
+        easing: 'easeInOutQuart'
+      },
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: selectedType === 'all',
+          position: 'top',
+          align: 'center',
+          onHover: function(event) {
+            if (event && event.native && event.native.target) {
+              event.native.target.style.cursor = 'pointer';
+            }
+          },
+          onLeave: function(event) {
+            if (event && event.native && event.native.target) {
+              event.native.target.style.cursor = 'default';
+            }
+          },
+          labels: {
+            generateLabels: function(chart) {
+              const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+              return labels.map(label => {
+                const baseText = label.text.replace(/\s+\(hidden\)$/i, '');
+                const isOverall = baseText === 'Overall Score';
+                const legendOpacity = isOverall ? fullOpacity : mutedOpacity;
+                label.text = label.hidden ? `${baseText} (hidden)` : baseText;
+                label.fillStyle = withOpacity(label.fillStyle, legendOpacity);
+                label.strokeStyle = withOpacity(label.strokeStyle, legendOpacity);
+                if (label.hidden) {
+                  label.fillStyle = withOpacity(label.fillStyle, 0.25);
+                  label.strokeStyle = withOpacity(label.strokeStyle, 0.25);
+                  label.fontColor = 'rgba(100, 116, 139, 0.6)';
+                } else {
+                  label.fontColor = isOverall ? '#475569' : 'rgba(71, 85, 105, 0.7)';
+                }
+                return label;
+              });
+            },
+            usePointStyle: true,
+            pointStyle: 'circle',
+            padding: 20,
+            font: { size: 12, weight: '500' },
+            color: '#475569'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleColor: '#f1f5f9',
+          bodyColor: '#e2e8f0',
+          borderColor: 'rgba(148, 163, 184, 0.3)',
+          borderWidth: 1,
+          padding: 14,
+          cornerRadius: 10,
+          titleFont: { size: 13, weight: '600' },
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 12, weight: '500' },
+            color: '#64748b'
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.15)',
+            drawBorder: false
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#94a3b8',
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Update Chart 2 (Score Analysis) with Chart.js
+function updateChart2() {
+  const canvas = document.getElementById('chart2Canvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+
+  if (!ctx) {
+    console.warn('Chart 2 canvas not available');
+    return;
+  }
+
+  // Destroy existing chart if it exists
+  if (window.charts.chart2) {
+    window.charts.chart2.destroy();
+    window.charts.chart2 = null;
+  }
+
+  // Use the currently selected score type
+  const scoreType = window.currentScoreType || 'overview';
+  const scoreDataKey = getScoreDataKey(scoreType);
+  const scoreData = window.chartData.chart2[scoreDataKey];
+
+  if (!scoreData || !scoreData.categories || scoreData.categories.length === 0) {
+    // Clear canvas and show no data message
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.textAlign = 'center';
+    ctx.fillText('No score data available', canvas.width / 2, canvas.height / 2);
+
+    // Clear summary
+    const averageElement = document.getElementById('chart2Average');
+    const rangeElement = document.getElementById('chart2Range');
+    if (averageElement) averageElement.textContent = 'Average Score: 0.0';
+    if (rangeElement) rangeElement.textContent = 'Range: 0.0 - 0.0';
+    return;
+  }
+
+  const validScores = scoreData.data.filter(value => Number.isFinite(value));
+  const overallAvg = validScores.length ? validScores.reduce((sum, val) => sum + val, 0) / validScores.length : 0;
+
+  // Determine if chart should be horizontal for agency category
+  const isHorizontal = (window.currentTab === 'agency');
+  const indexAxis = isHorizontal ? 'y' : 'x';
+
+  // Create colorful Chart.js bar chart for scores
+  window.charts.chart2 = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: scoreData.categories,
+      datasets: [{
+        label: 'Average Score',
+        data: scoreData.data,
+        backgroundColor: chartColors.slice(3, 3 + scoreData.categories.length),
+        borderColor: borderColors.slice(3, 3 + scoreData.categories.length),
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: borderColors.slice(3, 3 + scoreData.categories.length),
+        hoverBorderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: indexAxis,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutBounce',
+        delay: (context) => {
+          let delay = 0;
+          if (context.type === 'data' && context.mode === 'default') {
+            delay = context.dataIndex * 150 + context.datasetIndex * 100;
+          }
+          return delay;
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 14,
+          displayColors: false,
+          titleFont: {
+            size: 14,
+            weight: 'bold'
+          },
+          bodyFont: {
+            size: 13
+          },
+          callbacks: {
+            title: function(context) {
+              return `${getSelectedTabLabel()} category of FPOs - ${context[0].label}`;
+            },
+            label: function(context) {
+              const value = isHorizontal ? context.parsed.x : context.parsed.y;
+              return `${getActiveScoreLabel()}: ${value.toFixed(1)}`;
+            },
+          }
+        }
+      },
+      scales: isHorizontal ? {
+        // Horizontal bar chart scales for Chart 2
+        x: {
+          beginAtZero: true,
+          max: 100,
+          grid: {
+            color: '#f3f4f6',
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8,
+            callback: function(value) {
+              return value.toFixed(0);
+            }
+          }
+        },
+        y: {
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8,
+            autoSkip: false,
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // For agency tab, show all agency names with 40 character limit
+              if (window.currentTab === 'agency') {
+                return label.length > 30 ? label.substring(0, 27) + '...' : label;
+              }
+              return label;
+            }
+          }
+        }
+      } : {
+        // Vertical bar chart scales for Chart 2 (existing logic)
+        y: {
+          beginAtZero: true,
+          max: 100,
+          grid: {
+            color: '#f3f4f6',
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            padding: 8,
+            callback: function(value) {
+              return value.toFixed(0);
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            color: 'hsl(var(--muted-foreground))',
+            font: {
+              size: 11
+            },
+            maxRotation: 0,
+            minRotation: 0,
+            padding: 8,
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // Wrap text at 20 characters per line
+              const maxCharsPerLine = 20;
+              if (label.length > maxCharsPerLine) {
+                const words = label.split(' ');
+                const lines = [];
+                let currentLine = '';
+                words.forEach(word => {
+                  if ((currentLine + word).length <= maxCharsPerLine) {
+                    currentLine += (currentLine ? ' ' : '') + word;
+                  } else {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = word;
+                  }
+                });
+                if (currentLine) lines.push(currentLine);
+                return lines;
+              }
+              return label;
+            }
+          }
+        }
+      },
+      dataset: {
+        maxBarThickness: 36
+      }
+    }
+  });
+
+  // Update summary
+  const averageElement = document.getElementById('chart2Average');
+  const rangeElement = document.getElementById('chart2Range');
+  const scoreTypeLabel = getActiveScoreLabel();
+
+  if (averageElement) {
+    averageElement.textContent = `Average ${scoreTypeLabel}: ${overallAvg.toFixed(1)}`;
+  }
+
+  if (rangeElement) {
+    const minScore = validScores.length ? Math.min(...validScores) : 0;
+    const maxScore = validScores.length ? Math.max(...validScores) : 0;
+    rangeElement.textContent = `Range: ${minScore.toFixed(1)} - ${maxScore.toFixed(1)}`;
+  }
+
+  // Update chart 2 category label
+  const chart2Label = document.getElementById('chart2CategoryLabel');
+  if (chart2Label) {
+    chart2Label.textContent = scoreTypeLabel;
+  }
+
+
+  // Update card title with selected tab and score type
+  updateChart2CardTitle();
+}
+
+// Update Chart 2 Radar Chart
+// Function to export data
+async function exportData() {
+  try {
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.remove('hidden');
+    }
+
+    // Get current filters
+    const state = document.getElementById('state') ? document.getElementById('state').value : '';
+    const promotingAgency = document.getElementById('promoting_agency') ? document.getElementById('promoting_agency').value : '';
+    const scoreCategory = document.getElementById('score_category') ? document.getElementById('score_category').value : '';
+    const financialYear = document.getElementById('financial_year') ? document.getElementById('financial_year').value : '';
+    const startDatetime = document.getElementById('start_datetime') ? document.getElementById('start_datetime').value : '';
+    const endDatetime = document.getElementById('end_datetime') ? document.getElementById('end_datetime').value : '';
+    const fpoName = document.getElementById('fpo_name') ? document.getElementById('fpo_name').value : '';
+
+    // Build URL with filters (get all records)
+    const params = new URLSearchParams();
+    if (state) params.append('state', state);
+    if (promotingAgency) params.append('promoting_agency', promotingAgency);
+    if (scoreCategory) params.append('score_category', scoreCategory);
+    if (financialYear) params.append('financial_year', financialYear);
+    if (startDatetime) params.append('start_datetime', startDatetime);
+    if (endDatetime) params.append('end_datetime', endDatetime);
+    if (fpoName) params.append('fpo_name', fpoName);
+    params.append('page_size', '10000'); // Get all records
+
+    const url = `{% url 'fpo:api_fpo_table_data' %}?${params.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        showMessage('Please log in to export data', 'error');
+        return;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.fpos && data.fpos.length > 0) {
+      // Convert to CSV with filter information
+      const csvContent = convertReportToCSV(data.fpos, {
+        state,
+        promotingAgency,
+        scoreCategory,
+        financialYear,
+        startDatetime,
+        endDatetime,
+        fpoName
+      });
+
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const downloadUrl = URL.createObjectURL(blob);
+
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `fpo_reports_${date}.csv`;
+
+      link.setAttribute('href', downloadUrl);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showMessage(`Downloaded ${data.fpos.length} FPO records as CSV`, 'success');
+    } else {
+      showMessage('No data available to export', 'warning');
+    }
+
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    showMessage('Error exporting data. Please try again.', 'error');
+  } finally {
+    // Hide loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.add('hidden');
+    }
+  }
+}
+
+// Convert report data to CSV format with filter information
+function convertReportToCSV(fpos, filters) {
+  let csv = '';
+
+  // Add report header with filter information
+  csv += 'FPO Reports Export\n';
+  csv += `Generated on: ${new Date().toLocaleString()}\n`;
+  csv += '\nApplied Filters:\n';
+  if (filters.state) csv += `State: ${filters.state}\n`;
+  if (filters.promotingAgency) csv += `Promoting Agency: ${filters.promotingAgency}\n`;
+  if (filters.scoreCategory) csv += `Score Category: ${filters.scoreCategory}\n`;
+  if (filters.financialYear) csv += `Financial Year: ${filters.financialYear}\n`;
+  if (filters.startDatetime) csv += `Start Date & Time: ${filters.startDatetime}\n`;
+  if (filters.endDatetime) csv += `End Date & Time: ${filters.endDatetime}\n`;
+  if (filters.fpoName) csv += `FPO Name: ${filters.fpoName}\n`;
+  if (!filters.state && !filters.promotingAgency && !filters.scoreCategory && !filters.financialYear && !filters.startDatetime && !filters.endDatetime && !filters.fpoName) {
+    csv += 'No filters applied (All FPOs)\n';
+  }
+  csv += '\n';
+
+  // Add summary statistics
+  csv += 'Summary Statistics:\n';
+  csv += `Total FPOs: ${fpos.length}\n`;
+
+  const avgFinalScore = fpos.reduce((sum, fpo) => sum + (fpo.final_score || 0), 0) / fpos.length;
+  const avgGovernanceScore = fpos.reduce((sum, fpo) => sum + (fpo.governance_score || 0), 0) / fpos.length;
+  const avgOperationsScore = fpos.reduce((sum, fpo) => sum + (fpo.operations_score || 0), 0) / fpos.length;
+  const avgSystemsScore = fpos.reduce((sum, fpo) => sum + (fpo.systems_score || 0), 0) / fpos.length;
+  const avgFinanceScore = fpos.reduce((sum, fpo) => sum + (fpo.finance_score || 0), 0) / fpos.length;
+
+  csv += `Average Final Score: ${avgFinalScore.toFixed(2)}\n`;
+  csv += `Average Governance Score: ${avgGovernanceScore.toFixed(2)}\n`;
+  csv += `Average Operations Score: ${avgOperationsScore.toFixed(2)}\n`;
+  csv += `Average Systems Score: ${avgSystemsScore.toFixed(2)}\n`;
+  csv += `Average Finance Score: ${avgFinanceScore.toFixed(2)}\n`;
+  csv += '\n';
+
+  // Define CSV headers for FPO data
+  const headers = [
+    'Sr. No.',
+    'FPO Name',
+    'Promoting Agency',
+    'Final Score',
+    'Governance Score',
+    'Operations Score',
+    'Systems Score',
+    'Finance Score',
+    'Age (years)'
+  ];
+
+  // Create CSV header row for data table
+  csv += headers.join(',') + '\n';
+
+  // Add data rows
+  fpos.forEach((fpo, index) => {
+    const row = [
+      index + 1,
+      `"${escapeCSV(fpo.fpo_name)}"`,
+      `"${escapeCSV(fpo.promoting_agency)}"`,
+      fpo.final_score ? fpo.final_score.toFixed(2) : 'N/A',
+      fpo.governance_score ? fpo.governance_score.toFixed(2) : 'N/A',
+      fpo.operations_score ? fpo.operations_score.toFixed(2) : 'N/A',
+      fpo.systems_score ? fpo.systems_score.toFixed(2) : 'N/A',
+      fpo.finance_score ? fpo.finance_score.toFixed(2) : 'N/A',
+      fpo.age ? fpo.age.toFixed(1) : 'N/A'
+    ];
+    csv += row.join(',') + '\n';
+  });
+
+  return csv;
+}
+
+// Function to fetch stats data from API
+async function fetchStatsData(params = null) {
+  try {
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.remove('hidden');
+    }
+
+    const queryParams = params ? new URLSearchParams(params) : buildReportParams();
+
+    console.log('Fetching stats data with params:', queryParams.toString());
+    const apiUrl = "{% url 'fpo:api_stats_data' %}";
+    const response = await fetch(`${apiUrl}?${queryParams.toString()}`);
+    const data = await response.json();
+
+    console.log('API Response:', data);
+
+    if (data.success) {
+      console.log('Stats data fetched successfully:', data);
+      console.log('Stats to update:', data.stats);
+      updateStatsCards(data.stats);
+    } else {
+      console.error('Failed to fetch stats data:', data);
+      showError('Failed to load stats data. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error fetching stats data:', error);
+    showError('Error loading stats data. Please try again.');
+  } finally {
+    // Hide loading indicator
+    const loadingIndicator = document.getElementById('turbo-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.add('hidden');
+    }
+  }
+}
+
+// Function to update stats cards with new data
+function updateStatsCards(stats) {
+  console.log('Updating stats cards with data:', stats);
+  window.latestStats = stats;
+
+  // Update first line stats cards
+  updateTopSummaryForSection(window.currentReportSection, stats);
+  updateScoreStatsRowForSection(window.currentReportSection);
+  updateStatValue('stat-total-promoting-agencies', stats.total_promoting_agencies);
+  updateStatValue('stat-total-states', stats.total_states_count);
+  updateStatValue('stat-total-districts', stats.total_districts_count);
+
+  // Update second line stats cards
+  updateStatValue('stat-avg-total', stats.avg_total_score);
+  updateStatValue('stat-avg-governance', stats.avg_governance_score);
+  updateStatValue('stat-avg-operations', stats.avg_operations_score);
+  updateStatValue('stat-avg-systems', stats.avg_systems_score);
+  updateStatValue('stat-avg-financial', stats.avg_financial_score);
+
+  // Update tooltip name lists dynamically
+  if (stats.state_names) {
+    updateTooltipList('stat-total-states', stats.state_names, '#0d5418', 'States', 'No states found');
+  }
+  if (stats.district_names) {
+    updateTooltipList('stat-total-districts', stats.district_names, '#c6bc14', 'Districts', 'No districts found');
+  }
+  if (stats.promoting_agency_names) {
+    updateTooltipList('stat-total-promoting-agencies', stats.promoting_agency_names, '#114081', 'Promoting Agencies', 'No agencies found');
+  }
+
+  console.log('Stats cards update completed');
+}
+
+// Helper function to update tooltip name list for a stat card
+function updateTooltipList(statElementId, names, dotColor, title, emptyMessage) {
+  const statEl = document.getElementById(statElementId);
+  if (!statEl) return;
+
+  // Find the tooltip container - it's a sibling of the stat-card inside the stat-card-wrapper
+  const wrapper = statEl.closest('.stat-card-wrapper');
+  if (!wrapper) return;
+
+  const tooltip = wrapper.querySelector('.stat-tooltip');
+  if (!tooltip) return;
+
+  // Rebuild the tooltip content
+  let html = `<div class="stat-tooltip-title">${title}</div>`;
+  if (names.length === 0) {
+    html += `<div class="stat-tooltip-item" style="color: #94a3b8;">${emptyMessage}</div>`;
+  } else {
+    names.forEach(name => {
+      html += `<div class="stat-tooltip-item">
+        <span class="stat-tooltip-dot" style="background: ${dotColor};"></span>
+        ${name}
+      </div>`;
+    });
+  }
+  tooltip.innerHTML = html;
+}
+
+// Function to update a single stat card value
+function updateStatValue(elementId, value, formatType = null) {
+  console.log(`Updating element ${elementId} with value:`, value);
+  const element = document.getElementById(elementId);
+  if (element) {
+    console.log(`Found element ${elementId}, current value:`, element.textContent);
+
+    // Format the value based on the element ID
+    let formattedValue = value;
+    if (formatType === 'decimal' || (!formatType && (elementId.includes('avg-') || elementId.includes('score')))) {
+      // For average scores, format to 1 decimal place
+      formattedValue = parseFloat(value).toFixed(1);
+    } else if (formatType === 'integer' || (!formatType && elementId.includes('total'))) {
+      // For total counts, format as integer
+      formattedValue = parseInt(value).toLocaleString();
+    }
+
+    // Add animation effect
+    element.style.transition = 'all 0.3s ease';
+    element.style.transform = 'scale(1.1)';
+
+    setTimeout(() => {
+      element.textContent = formattedValue;
+      element.style.transform = 'scale(1)';
+      console.log(`Updated element ${elementId} to new value:`, formattedValue);
+    }, 150);
+  } else {
+    console.warn(`Element with ID '${elementId}' not found`);
+  }
+}
+
+// Function to get display label for score category
+function getScoreCategoryLabel(value) {
+  const labels = {
+    'achievers': 'Achievers (≥70%)',
+    'performers': 'Performers (50-69%)',
+    'aspirational': 'Aspirational (<50%)',
+    'blank': 'N/A (No Score)'
+  };
+  return labels[value] || value;
+}
+
+// Function to update filter badges
+function updateFilterBadges() {
+  const container = document.getElementById('filter-badges-container');
+  if (!container) return;
+  container.style.display = 'none';
+  container.innerHTML = '';
+}
+
+// Function to remove individual filter
+function removeFilter(filterName) {
+  // Clear the specific filter value
+  if (filterName === 'financial_year') {
+    const financialYearSelect = document.getElementById('financial_year');
+    if (financialYearSelect) {
+      financialYearSelect.value = '';
+    }
+  } else if (filterName === 'report_section') {
+    const reportSectionSelect = document.getElementById('report_section');
+    if (reportSectionSelect) {
+      reportSectionSelect.value = 'overview';
+    }
+    applyReportSectionSelection('overview', true);
+  } else {
+    const filterElement = document.getElementById(filterName);
+    if (filterElement) {
+      filterElement.value = '';
+    }
+  }
+
+  // Update badges and apply filters
+  updateFilterBadges();
+  applyFilters();
+}
+
+// Function to handle form submission with API calls
+function applyFilters() {
+  const params = buildReportParams();
+
+  console.log('Applying filters:', params.toString());
+  const nextUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+  window.history.replaceState({}, '', nextUrl);
+
+  // Show loading indicator
+  const loadingIndicator = document.getElementById('turbo-loading');
+  if (loadingIndicator) {
+    loadingIndicator.classList.remove('hidden');
+  }
+
+  // Test the API endpoint first
+  testApiEndpoint(params);
+
+  // Fetch updated stats data via API
+  fetchStatsData(params);
+
+  // Fetch updated chart data via API
+  fetchChartData(params);
+}
+
+// Function to test API endpoint
+async function testApiEndpoint(params) {
+  try {
+    const apiUrl = "{% url 'fpo:api_stats_data' %}";
+    const testUrl = `${apiUrl}?${params.toString()}`;
+    console.log('Testing API endpoint:', testUrl);
+
+    const response = await fetch(testUrl);
+    console.log('API Response status:', response.status);
+    console.log('API Response headers:', response.headers);
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('API Test - Raw response:', data);
+      console.log('API Test - Success:', data.success);
+      console.log('API Test - Stats data:', data.stats);
+    } else {
+      console.error('API Test - Failed with status:', response.status);
+      const errorText = await response.text();
+      console.error('API Test - Error response:', errorText);
+    }
+  } catch (error) {
+    console.error('API Test - Network error:', error);
+  }
+}
+
+// Function to handle form submission with Turbo Frame (alias for backward compatibility)
+function submitFilters() {
+  applyFilters();
+}
+
+function positionFiltersBelowAvgCards() {
+  const turboFrame = document.getElementById('reports-content');
+  const filtersPanel = turboFrame ? turboFrame.querySelector('.filters-panel') : null;
+  const avgCardsRow = document.getElementById('score-stats-row');
+
+  if (!filtersPanel || !avgCardsRow) {
+    return;
+  }
+
+  // Keep filter panel directly below avg cards row.
+  if (avgCardsRow.nextElementSibling !== filtersPanel) {
+    avgCardsRow.insertAdjacentElement('afterend', filtersPanel);
+  }
+}
+
+// Initialize reports functionality
+function initializeReportsFunctionality() {
+  try {
+    positionFiltersBelowAvgCards();
+    initializeDateTimePickers();
+
+    // Restore section mode from URL (if present) before chart render.
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSection = normalizeReportSection(urlParams.get('report_section') || document.getElementById('report_section')?.value || 'overview');
+    applyReportSectionSelection(initialSection, false);
+
+    // Initialize tabs
+    initializeTabs();
+
+    // The Apply Filters button now uses onclick="applyFilters()" directly
+    // No need for additional event listeners
+
+    const initialParams = buildReportParams();
+
+    // Initialize cards and charts by fetching data from APIs
+    fetchStatsData(initialParams);
+    fetchChartData(initialParams);
+
+    // Add Turbo event listeners for loading states
+    setupTurboEventListeners();
+  } catch (error) {
+    console.error('Error initializing reports functionality:', error);
+    // Show error to user
+    showError('Failed to initialize reports. Please refresh the page.');
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initializeReportsFunctionality);
+
+// Re-initialize on Turbo navigation
+document.addEventListener('turbo:load', initializeReportsFunctionality);
+document.addEventListener('turbo:frame-render', function(event) {
+  // Only re-initialize if it's our reports frame
+  if (event.target.id === 'reports-content') {
+    initializeReportsFunctionality();
+  }
+});
+
+// Check for open_table parameter and auto-open FPOs table
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('open_table') === 'true') {
+    // Small delay to ensure page is fully loaded
+    setTimeout(() => {
+      openFpoTable();
+    }, 500);
+  }
+});
+
+// Also check on Turbo navigation
+document.addEventListener('turbo:load', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('open_table') === 'true') {
+    setTimeout(() => {
+      openFpoTable();
+    }, 500);
+  }
+});
+
+// Setup Turbo event listeners for loading indicators
+function setupTurboEventListeners() {
+  const loadingIndicator = document.getElementById('turbo-loading');
+
+  document.addEventListener('turbo:frame-load', function() {
+    if (loadingIndicator) {
+      loadingIndicator.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('turbo:before-frame-render', function() {
+    if (loadingIndicator) {
+      loadingIndicator.classList.remove('hidden');
+    }
+  });
+
+  document.addEventListener('turbo:frame-render', function(event) {
+    // Only handle events for our reports frame
+    if (event.target.id === 'reports-content') {
+      if (loadingIndicator) {
+        loadingIndicator.classList.add('hidden');
+      }
+
+      // Fetch chart data with current filters after content updates
+      fetchChartData();
+    }
+  });
+}
+
+// Function to sort by score
+function sortByScore() {
+  const params = new URLSearchParams(window.location.search);
+  const currentSort = params.get('sort');
+
+  // Toggle sort order: if currently descending, switch to ascending; otherwise default to descending
+  if (currentSort === 'score_desc') {
+    params.set('sort', 'score_asc');
+  } else {
+    params.set('sort', 'score_desc');
+  }
+
+  // Remove page parameter to start from first page when sorting
+  params.delete('page');
+
+  // Use Turbo to update the content with the new sort parameter
+  Turbo.visit(`{% url 'fpo:reports_v2' %}?${params.toString()}`, {
+    frame: 'reports-content'
+  });
+}
+</script>
+
+<!-- FPOs Table Drawer -->
+<div id="fpoTableDrawer" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/50" onclick="closeFpoTable()"></div>
+
+  <!-- Drawer -->
+  <div class="absolute right-0 top-0 h-full w-full max-w-6xl bg-background shadow-2xl transform transition-transform duration-300 ease-in-out"
+       id="fpoTableDrawerPanel">
+
+    <!-- Drawer Header -->
+    <div class="flex items-center justify-between p-6 border-b border-border">
+      <h2 class="text-xl font-semibold text-foreground">FPOs Table</h2>
+      <div class="flex items-center gap-3">
+        <button onclick="downloadFpoTableCSV()"
+                class="btn-primary-brand">
+          <i class="fa fa-download"></i>
+          Download CSV
+        </button>
+        <button onclick="closeFpoTable()"
+                class="text-muted-foreground hover:text-foreground transition-colors">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Drawer Content -->
+    <div class="p-6 h-full overflow-hidden flex flex-col">
+      <!-- Loading State -->
+      <div id="fpoTableLoading" class="flex items-center justify-center h-64">
+        <div class="flex flex-col items-center space-y-4">
+          <i class="fa fa-spinner fa-spin text-3xl text-muted-foreground"></i>
+          <p class="text-muted-foreground">Loading FPOs data...</p>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div id="fpoTableContainer" class="hidden flex-1 overflow-hidden">
+        <!-- Table -->
+        <div class="overflow-x-auto border border-border rounded-lg">
+          <table class="w-full min-w-max">
+            <thead class="bg-muted sticky top-0 z-10">
+              <tr>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  #
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[150px]">
+                  FPO Name
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+                  Promoting Agency
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Final Score
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Governance
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Operations
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Systems
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Finance
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  Age (years)
+                </th>
+                </tr>
+            </thead>
+            <tbody id="fpoTableBody" class="bg-card divide-y divide-border">
+              <!-- Table rows will be dynamically inserted here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="fpoTablePagination" class="mt-4 flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-muted-foreground">
+              Showing <span id="pageStart">0</span> to <span id="pageEnd">0</span> of <span id="totalCount">0</span> FPOs
+            </span>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="prevPageBtn" onclick="goToPreviousPage()"
+                    class="px-3 py-1 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fa fa-chevron-left mr-1"></i>Previous
+            </button>
+            <div class="flex items-center space-x-1" id="pageNumbers">
+              <!-- Page numbers will be dynamically inserted here -->
+            </div>
+            <button id="nextPageBtn" onclick="goToNextPage()"
+                    class="px-3 py-1 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              Next<i class="fa fa-chevron-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="fpoTableEmpty" class="hidden flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <i class="fa fa-table text-4xl mb-4"></i>
+        <p class="text-lg" id="fpoTableEmptyTitle">No FPOs found</p>
+        <p class="text-sm" id="fpoTableEmptyMessage">Try adjusting your filters or search criteria</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Drawer styles */
+#fpoTableDrawer.hidden .drawer-panel {
+  transform: translateX(100%);
+}
+
+#fpoTableDrawer:not(.hidden) .drawer-panel {
+  transform: translateX(0);
+}
+
+/* Table styles */
+#fpoTableDrawer table {
+  font-size: 0.875rem;
+}
+
+#fpoTableDrawer th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#fpoTableDrawer td {
+  vertical-align: middle;
+}
+
+/* Chart label wrapping styles */
+#chart1Canvas,
+#chart2Canvas {
+  max-width: 100%;
+}
+
+#chart1Canvas .chartjs-x-axis-label,
+#chart2Canvas .chartjs-x-axis-label {
+  max-width: 96px;
+  text-align: center;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.2;
+}
+
+</style>
+
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}

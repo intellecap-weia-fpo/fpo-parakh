@@ -1,0 +1,162 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block title %}FPO Intelligence - User Management{% endblock %}
+{% block meta_description %}Manage roles and FPO access{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block page_title_block %}
+  <p class="fpo-eyebrow">{% trans "Access Control" %}</p>
+  <h1 class="fpo-page-title">{% trans "User Management" %}</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+  <p class="fpo-page-subtitle">{% trans "Manage roles and FPO-level access across the platform" %}</p>
+{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'fpo:create_user' %}" class="fpo-button-primary">
+    <i class="fa fa-plus" aria-hidden="true"></i>
+    {% trans "Add User" %}
+  </a>
+{% endblock %}
+
+{% block main_content %}
+  <section class="fpo-panel" aria-labelledby="users-heading">
+    <div class="fpo-panel-header flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 id="users-heading" class="fpo-panel-title">{% trans "Users" %}</h2>
+        <p class="fpo-panel-copy">{% trans "Manage all system users" %}</p>
+      </div>
+      <div class="flex items-center gap-3 text-[10px] text-slate-500">
+        <span class="inline-flex items-center gap-1.5"><i class="w-2 h-2 rounded-sm bg-[#163a68]"></i>{% trans "Admin" %}</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2 h-2 rounded-sm bg-[#7fa6e8]"></i>{% trans "Viewer" %}</span>
+      </div>
+    </div>
+
+    <form method="get" class="fpo-filter-bar">
+      <div class="relative flex-1 min-w-0">
+        <label class="sr-only" for="search">{% trans "Search users" %}</label>
+        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input id="search" type="search" name="search" value="{{ search_query }}" class="form-control pl-9" placeholder="{% trans 'Search by name, username, or email...' %}">
+      </div>
+      <select name="role" class="form-control w-full sm:w-40" aria-label="{% trans 'Role' %}">
+        <option value="">{% trans "All Roles" %}</option>
+        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>{% trans "Admins" %}</option>
+        <option value="viewer" {% if role_filter == 'viewer' %}selected{% endif %}>{% trans "Viewers" %}</option>
+        <option value="no_role" {% if role_filter == 'no_role' %}selected{% endif %}>{% trans "No Role" %}</option>
+      </select>
+      <button type="submit" class="fpo-button-primary">{% trans "Apply Filters" %}</button>
+      {% if search_query or role_filter %}<a href="{% url 'fpo:user_management' %}" class="fpo-button-secondary">{% trans "Clear" %}</a>{% endif %}
+    </form>
+
+    <div class="overflow-x-auto">
+      <table class="fpo-data-table min-w-[820px]">
+        <thead>
+          <tr>
+            <th class="text-left">{% trans "User Details" %}</th>
+            <th class="text-left">{% trans "FPO Access" %}</th>
+            <th class="text-left">{% trans "Status" %}</th>
+            <th class="text-left">{% trans "Joined" %}</th>
+            <th class="text-right">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in page_obj %}
+            <tr>
+              <td>
+                <div class="flex items-center gap-3 min-w-[220px]">
+                  <span class="fpo-avatar is-user">{{ account.first_name|default:account.username|slice:":1"|upper }}{{ account.last_name|slice:":1"|upper }}</span>
+                  <div class="min-w-0">
+                    <a href="{% url 'fpo:user_detail' account.id %}" class="block font-semibold text-slate-800 hover:text-blue-700 truncate">{{ account.get_full_name|default:account.username }}</a>
+                    <span class="block text-[11px] text-slate-400 truncate">{{ account.email|default:account.username }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% with memberships=account.fpomember_set.all %}
+                  {% if memberships %}
+                    <div class="flex flex-wrap items-center gap-1.5 max-w-[360px]">
+                      {% for membership in memberships|slice:":1" %}
+                        <a href="{% url 'fpo:user_detail' account.id %}" class="px-2 py-1 rounded-md bg-blue-50 text-[10px] font-medium text-[#234b7d]">
+                          {{ membership.fpo.name }} · <span class="capitalize">{{ membership.role }}</span>
+                        </a>
+                      {% endfor %}
+                      {% if memberships|length > 1 %}<span class="text-[10px] text-slate-400">+{{ memberships|length|add:"-1" }}</span>{% endif %}
+                    </div>
+                  {% else %}
+                    <span class="italic text-slate-400">{% trans "No FPO access" %}</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+              <td>
+                {% if account.is_active %}<span class="fpo-status is-success">{% trans "Active" %}</span>{% else %}<span class="fpo-status is-danger">{% trans "Inactive" %}</span>{% endif %}
+              </td>
+              <td>{{ account.date_joined|date:"M d, Y" }}</td>
+              <td>
+                <div class="flex items-center justify-end gap-1.5">
+                  <a href="{% url 'fpo:user_detail' account.id %}" class="fpo-table-action" title="{% trans 'Edit user access' %}"><i class="fa fa-edit"></i></a>
+                  <button type="button"
+                          class="fpo-table-action is-danger"
+                          title="{% trans 'Delete user' %}"
+                          onclick="showDeleteModal({{ account.id }}, '{{ account.get_full_name|default:account.username|escapejs }}')">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="py-16 text-center">
+                <i class="fa fa-users text-2xl text-slate-300"></i>
+                <h3 class="mt-3 font-semibold text-slate-700">{% trans "No users found" %}</h3>
+                <p class="mt-1 text-slate-400">{% trans "Try changing or clearing the current filters." %}</p>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fpo-pagination">
+      <span>{% blocktrans with start=page_obj.start_index end=page_obj.end_index total=page_obj.paginator.count %}Showing {{ start }}-{{ end }} of {{ total }} users{% endblocktrans %}</span>
+      {% if page_obj.has_other_pages %}
+        <nav class="flex items-center gap-1.5" aria-label="{% trans 'Pagination' %}">
+          {% if page_obj.has_previous %}<a class="fpo-table-action" href="?page={{ page_obj.previous_page_number }}&amp;search={{ search_query|urlencode }}&amp;role={{ role_filter|urlencode }}"><i class="fa fa-chevron-left"></i></a>{% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}<span class="fpo-table-action !bg-[#163a68] !text-white !border-[#163a68]">{{ num }}</span>{% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}<a class="fpo-table-action" href="?page={{ num }}&amp;search={{ search_query|urlencode }}&amp;role={{ role_filter|urlencode }}">{{ num }}</a>{% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}<a class="fpo-table-action" href="?page={{ page_obj.next_page_number }}&amp;search={{ search_query|urlencode }}&amp;role={{ role_filter|urlencode }}"><i class="fa fa-chevron-right"></i></a>{% endif %}
+        </nav>
+      {% endif %}
+    </div>
+  </section>
+
+  <div id="deleteModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/45 p-4" onclick="closeDeleteModal()">
+    <div class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl" onclick="event.stopPropagation()">
+      <h3 class="fpo-panel-title">{% trans "Delete User" %}</h3>
+      <p class="mt-3 text-sm text-slate-500">{% trans "Are you sure you want to delete" %} <strong id="deleteUserName" class="text-slate-800"></strong>? {% trans "This action cannot be undone." %}</p>
+      <form id="deleteUserForm" method="post" class="mt-6 flex justify-end gap-2">
+        {% csrf_token %}
+        <button type="button" onclick="closeDeleteModal()" class="fpo-button-secondary">{% trans "Cancel" %}</button>
+        <button type="submit" class="fpo-button-primary !bg-[#c2453b] !border-[#c2453b]">{% trans "Delete" %}</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function showDeleteModal(userId, userName) {
+      const modal = document.getElementById('deleteModal');
+      document.getElementById('deleteUserName').textContent = userName;
+      document.getElementById('deleteUserForm').action = `/fpo/user-management/${userId}/delete/`;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    function closeDeleteModal() {
+      const modal = document.getElementById('deleteModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDeleteModal(); });
+  </script>
+{% endblock %}

@@ -1,0 +1,293 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}FPO Admin - Dashboard{% endblock %}
+
+{% block meta_description %}Overview of Farmer Producer Organization management system{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Stat card custom colors - matching reports page */
+  .stat-card {
+    border-top: 3px solid;
+    border-top-color: var(--card-color);
+  }
+
+  .stat-card .stat-icon svg {
+    stroke: var(--card-color) !important;
+  }
+
+  .stat-card::before {
+    display: none; /* Hide the default before element since we're using border-top */
+  }
+</style>
+{% endblock %}
+
+{% block page_title_block %}
+<h1 class="text-2xl sm:text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+    {% trans "Dashboard" %}
+</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="mt-2 text-muted-foreground">{% trans "Overview of Farmer Producer Organization management system" %}</p>
+{% endblock %}
+
+{% block main_content %}
+
+<div class="space-y-8">
+    <!-- Stats Cards Row 1 -->
+    <div class="stats-row" style="grid-template-columns: repeat(3, 1fr);">
+        <!-- States -->
+        <div class="stat-card" style="--card-color: #0d5418;">
+            <div class="stat-icon" style="background-color: #D6EBDA; color: #0d5418;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+            </div>
+            <div class="stat-value">{{ states_count }}</div>
+            <div class="stat-label">{% trans "States" %}</div>
+        </div>
+
+        <!-- Districts -->
+        <div class="stat-card" style="--card-color: #c6bc14;">
+            <div class="stat-icon" style="background-color: #FEE9AE; color: #c6bc14;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+            </div>
+            <div class="stat-value">{{ districts_count }}</div>
+            <div class="stat-label">{% trans "Districts" %}</div>
+        </div>
+
+        <!-- Total FPOs -->
+        <div class="stat-card" style="--card-color: #1b52ff;">
+            <div class="stat-icon" style="background-color: #D4E3ED; color: #1b52ff;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                    <line x1="16" y1="8" x2="2" y2="22"></line>
+                    <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                </svg>
+            </div>
+            <div class="stat-value">{{ total_fpos }}</div>
+            <div class="stat-label">{% trans "Total FPOs" %}</div>
+        </div>
+    </div>
+
+    <!-- Stats Cards Row 2 -->
+    <div class="stats-row" style="grid-template-columns: repeat(3, 1fr);">
+        <!-- Average Score -->
+        <div class="stat-card" style="--card-color: #1b52ff;">
+            <div class="stat-icon" style="background-color: #D4E3ED; color: #1b52ff;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+            </div>
+            <div class="stat-value">{{ avg_score|floatformat:1 }}</div>
+            <div class="stat-label">{% trans "Average Score" %}</div>
+        </div>
+
+        <!-- Active Users -->
+        <div class="stat-card" style="--card-color: #0d5418;">
+            <div class="stat-icon" style="background-color: #D6EBDA; color: #0d5418;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="stat-value">{{ total_users|intcomma }}</div>
+            <div class="stat-label">{% trans "Active Users" %}</div>
+        </div>
+
+        <!-- Achievers -->
+        <div class="stat-card" style="--card-color: #c9b5f1;">
+            <div class="stat-icon" style="background-color: #EDE9FE; color: #c9b5f1;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                    <path d="M4 22h16"></path>
+                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                </svg>
+            </div>
+            <div class="stat-value">{{ achievers_count }}</div>
+            <div class="stat-label">{% trans "Achievers" %}</div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Top FPOs -->
+        <div class="bg-card rounded-2xl p-6 border border-border shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-card-foreground flex items-center gap-2">
+                        <i class="fa fa-trophy text-yellow-600"></i>
+                        {% trans "Top FPOs" %}
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1">{% trans "Highest performing organizations" %}</p>
+                </div>
+                <a href="{% url 'fpo:fpos_list' %}" class="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                    {% trans "View All" %}
+                    <i class="fa fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+                {% if top_fpos %}
+                    {% for submission in top_fpos %}
+                    <a href="{% url 'fpo:fpo_detail' submission.fpo.id %}" class="block p-4 rounded-xl border border-border hover:bg-accent/50 transition-all duration-200 group">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors truncate">
+                                    {{ submission.fpo.name }}
+                                </p>
+                                <div class="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                    <span class="flex items-center gap-1">
+                                        <i class="fa fa-map-marker"></i>
+                                        {{ submission.fpo.district }}, {{ submission.fpo.state }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                    <span class="flex items-center gap-1">
+                                        <i class="fa fa-calendar"></i>
+                                        {{ submission.financial_year }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-2 shrink-0 ml-3">
+                                <span class="flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-sm font-bold">
+                                    <i class="fa fa-star"></i>
+                                    {{ submission.calculated_score|floatformat:1 }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                                    {% if submission.calculated_score >= 70 %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300
+                                    {% elif submission.calculated_score >= 50 %}bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300
+                                    {% else %}bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300{% endif %}">
+                                    {% if submission.calculated_score >= 70 %}{% trans "Achiever" %}
+                                    {% elif submission.calculated_score >= 50 %}{% trans "Performer" %}
+                                    {% else %}{% trans "Aspirational" %}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-12">
+                        <div class="w-20 h-20 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa fa-trophy text-3xl text-muted-foreground/50"></i>
+                        </div>
+                        <p class="text-muted-foreground font-medium">{% trans "No scored FPOs yet" %}</p>
+                        <p class="text-sm text-muted-foreground/70 mt-1">{% trans "Top performers will appear here" %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Users -->
+        <div class="bg-card rounded-2xl p-6 border border-border shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-card-foreground flex items-center gap-2">
+                        <i class="fa fa-users text-blue-600"></i>
+                        {% trans "Recent Users" %}
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1">{% trans "Newly registered users" %}</p>
+                </div>
+                <a href="{% url 'fpo:user_management' %}" class="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                    {% trans "View All" %}
+                    <i class="fa fa-arrow-right text-xs"></i>
+                </a>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+                {% if recent_users %}
+                    {% for user in recent_users %}
+                    <a href="{% url 'fpo:user_detail' user.id %}" class="block p-4 rounded-xl border border-border hover:bg-accent/50 transition-all duration-200 group">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                <i class="fa fa-user text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors truncate">
+                                    {{ user.get_full_name|default:user.username }}
+                                </p>
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    {{ user.email }}
+                                </p>
+                                {% with user.fpomember_set.all|first as membership %}
+                                    {% if membership %}
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                            {{ membership.get_role_display }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                {% endwith %}
+                                <p class="text-xs text-muted-foreground mt-1">
+                                    <i class="fa fa-clock-o"></i>
+                                    {% trans "Joined" %} {{ user.date_joined|naturaltime }}
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-12">
+                        <div class="w-20 h-20 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa fa-users text-3xl text-muted-foreground/50"></i>
+                        </div>
+                        <p class="text-muted-foreground font-medium">{% trans "No users yet" %}</p>
+                        <p class="text-sm text-muted-foreground/70 mt-1">{% trans "New users will appear here" %}</p>
+                        <a href="{% url 'fpo:user_management' %}" class="inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-semibold">
+                            <i class="fa fa-users mr-2"></i>{% trans "Manage Users" %}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-6 border border-primary/20">
+        <h3 class="text-lg font-bold text-card-foreground mb-4">{% trans "Quick Actions" %}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'fpo:fpo_create' %}" class="flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:shadow-md transition-all duration-200 group">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                    <i class="fa fa-plus text-xl"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors">{% trans "Add New FPO" %}</p>
+                    <p class="text-xs text-muted-foreground">{% trans "Register organization" %}</p>
+                </div>
+            </a>
+
+            <a href="{% url 'fpo:reports_v2' %}" class="flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:shadow-md transition-all duration-200 group">
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                    <i class="fa fa-bar-chart text-xl"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors">{% trans "View Reports" %}</p>
+                    <p class="text-xs text-muted-foreground">{% trans "Analytics & insights" %}</p>
+                </div>
+            </a>
+
+            <a href="{% url 'fpo:user_management' %}" class="flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:shadow-md transition-all duration-200 group">
+                <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-colors">
+                    <i class="fa fa-users text-xl"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors">{% trans "Manage Users" %}</p>
+                    <p class="text-xs text-muted-foreground">{% trans "User administration" %}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

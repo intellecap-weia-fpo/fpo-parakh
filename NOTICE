@@ -1,0 +1,8 @@
+FPO Parakh
+Copyright (C) 2025-2026 IntelleCap Advisory Services Pvt. Ltd.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License, version 3 only (AGPL-3.0-only). See LICENSE.
+
+The files in `docs/` are licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+
+Third-party libraries remain under their own licences, listed in uv.lock and yarn.lock.

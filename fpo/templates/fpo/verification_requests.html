@@ -1,0 +1,329 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "FPO Verification Requests" %}{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .verification-dialog {
+    /* Restore viewport centering after the global CSS margin reset. */
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: calc(100% - 2rem);
+    max-width: 32rem;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    text-align: left;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 0.75rem;
+    color: var(--foreground, #0f172a);
+    background: var(--card, #ffffff);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  }
+
+  .verification-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.48);
+  }
+
+  .verification-dialog textarea {
+    resize: vertical;
+  }
+
+  .verification-dialog footer {
+    flex-wrap: wrap;
+  }
+
+  .verification-dialog footer button {
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 479px) {
+    .verification-dialog header,
+    .verification-dialog .verification-dialog-body,
+    .verification-dialog footer {
+      padding: 1rem;
+    }
+
+    .verification-dialog footer button {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block page_title_block %}
+<p class="fpo-eyebrow">{% trans "Profile Review" %}</p>
+<h1 class="fpo-page-title">
+  {% trans "FPO Verification Requests" %}
+</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="fpo-page-subtitle">
+  {% blocktrans count counter=pending_count %}{{ counter }} registration is waiting for review.{% plural %}{{ counter }} registrations are waiting for review.{% endblocktrans %}
+</p>
+{% endblock %}
+
+{% block main_content %}
+<div class="space-y-6 pb-8">
+  <!-- Search and verification filters use the same card treatment as Manage FPO. -->
+  <section class="fpo-panel p-6" aria-label="{% trans 'Verification filters' %}">
+    <div class="space-y-4">
+      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold text-card-foreground">{% trans "Verification queue" %}</h2>
+          <p class="text-sm text-muted-foreground">{% trans "Review and manage FPO signup requests" %}</p>
+        </div>
+        <nav class="verification-status-tabs flex flex-wrap gap-2" aria-label="{% trans 'Verification status' %}">
+          <a href="?status=pending{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}"
+             class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors {% if selected_status == 'pending' %}bg-primary text-primary-foreground border-primary{% else %}border-border text-card-foreground bg-background hover:bg-accent{% endif %}">
+            <span>{% trans "Pending" %}</span>
+            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs {% if selected_status == 'pending' %}bg-white/20{% else %}bg-muted text-muted-foreground{% endif %}">{{ pending_count }}</span>
+          </a>
+          <a href="?status=approved{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}"
+             class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors {% if selected_status == 'approved' %}bg-primary text-primary-foreground border-primary{% else %}border-border text-card-foreground bg-background hover:bg-accent{% endif %}">
+            <span>{% trans "Approved history" %}</span>
+            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs {% if selected_status == 'approved' %}bg-white/20{% else %}bg-muted text-muted-foreground{% endif %}">{{ approved_count }}</span>
+          </a>
+          <a href="?status=rejected{% if search_query %}&amp;search={{ search_query|urlencode }}{% endif %}"
+             class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors {% if selected_status == 'rejected' %}bg-primary text-primary-foreground border-primary{% else %}border-border text-card-foreground bg-background hover:bg-accent{% endif %}">
+            <span>{% trans "Rejected" %}</span>
+            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs {% if selected_status == 'rejected' %}bg-white/20{% else %}bg-muted text-muted-foreground{% endif %}">{{ rejected_count }}</span>
+          </a>
+        </nav>
+      </div>
+
+      <form method="get" class="flex flex-col sm:flex-row gap-2">
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        <div class="relative flex-1">
+          <label class="sr-only" for="verification-search">{% trans "Search registrations" %}</label>
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fa fa-search text-muted-foreground text-sm"></i>
+          </div>
+          <input id="verification-search"
+                 type="search"
+                 name="search"
+                 value="{{ search_query }}"
+                 class="form-control pl-10 pr-4"
+                 placeholder="{% trans 'Search by FPO name, email, district, or state...' %}">
+        </div>
+        <button type="submit" class="fpo-button-primary">
+          {% trans "Search" %}
+        </button>
+        {% if search_query %}
+          <a href="?status={{ selected_status }}" class="fpo-button-secondary">
+            {% trans "Clear" %}
+          </a>
+        {% endif %}
+      </form>
+    </div>
+  </section>
+
+  <!-- Verification table mirrors Manage FPO table typography and spacing. -->
+  <section class="fpo-panel overflow-hidden">
+    <div class="px-6 py-5 border-b border-border">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-card-foreground">
+            {% if selected_status == "pending" %}{% trans "Pending review" %}
+            {% elif selected_status == "approved" %}{% trans "Approved FPO history" %}
+            {% else %}{% trans "Profiles awaiting changes" %}{% endif %}
+          </h2>
+          <p class="text-sm text-muted-foreground">{% trans "View profile details and take verification action" %}</p>
+        </div>
+        {% if page_obj.paginator.count %}
+          <p class="text-sm text-muted-foreground">
+            {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=page_obj.paginator.count %}Displaying <span class="font-semibold text-card-foreground">{{ start }}-{{ end }}</span> of <span class="font-semibold text-card-foreground">{{ total }}</span> FPOs{% endblocktrans %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="verification-table fpo-data-table min-w-full">
+        <thead>
+          <tr class="border-b border-border">
+            <th class="px-6 py-5 text-left"><span class="text-sm font-semibold text-card-foreground">{% trans "FPO Details" %}</span></th>
+            <th class="px-6 py-5 text-left"><span class="text-sm font-semibold text-card-foreground">{% trans "Location" %}</span></th>
+            <th class="px-6 py-5 text-left"><span class="text-sm font-semibold text-card-foreground">{% trans "Registered" %}</span></th>
+            <th class="px-6 py-5 text-left"><span class="text-sm font-semibold text-card-foreground">{% trans "Data Entries" %}</span></th>
+            <th class="px-6 py-5 text-left"><span class="text-sm font-semibold text-card-foreground">{% trans "Status" %}</span></th>
+            <th class="px-6 py-5 text-right text-sm font-semibold text-card-foreground">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for fpo in page_obj %}
+            <tr class="group hover:bg-muted/5 transition-all duration-200">
+              <td class="px-6 py-5">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all duration-200 flex-shrink-0">
+                    {% if fpo.logo %}
+                      <img src="{{ fpo.logo.url }}" alt="{{ fpo.name }}" class="w-8 h-8 rounded-lg object-cover">
+                    {% else %}
+                      <i class="fa fa-leaf text-lg text-primary"></i>
+                    {% endif %}
+                  </div>
+                  <div class="min-w-0">
+                    <a href="{% url 'fpo:fpo_detail' fpo.pk %}" class="block hover:no-underline">
+                      <p class="font-semibold text-card-foreground group-hover:text-primary transition-colors truncate max-w-64">{{ fpo.name }}</p>
+                      <p class="text-sm text-muted-foreground truncate max-w-64">{{ fpo.email }}</p>
+                      <p class="text-xs text-muted-foreground">{{ fpo.phone|default:"—" }}</p>
+                    </a>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-5" style="min-width: 180px;">
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-card-foreground">{{ fpo.district|default:"—" }}, {{ fpo.state|default:"—" }}</div>
+                  <div class="text-sm text-muted-foreground">{{ fpo.city|default:"—" }}</div>
+                </div>
+              </td>
+              <td class="px-6 py-5" style="min-width: 180px;">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <i class="fa fa-calendar text-muted-foreground text-xs"></i>
+                    <span class="text-sm font-medium text-card-foreground">{{ fpo.created_at|date:"M d, Y" }}</span>
+                  </div>
+                  <div class="text-xs text-muted-foreground pl-5">
+                    {% trans "by" %} {{ fpo.created_by.get_full_name|default:fpo.created_by.username|default:"—" }}
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-5">
+                <span class="text-sm font-medium text-card-foreground">{{ fpo.data_entries_count }}</span>
+              </td>
+              <td class="px-6 py-5">
+                {% if fpo.verification_status == "approved" %}
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20" data-verification-complete>
+                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span class="text-sm font-medium text-green-700">{% trans "Verified" %}</span>
+                  </div>
+                {% elif fpo.verification_status == "rejected" %}
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span class="text-sm font-medium text-red-700">{% trans "Rejected" %}</span>
+                  </div>
+                {% else %}
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                    <span class="text-sm font-medium text-amber-700">{% trans "Pending" %}</span>
+                  </div>
+                {% endif %}
+              </td>
+              <td class="px-6 py-5">
+                <div class="flex items-center justify-end gap-1">
+                  <a href="{% url 'fpo:fpo_detail' fpo.pk %}"
+                     class="inline-flex items-center justify-center w-9 h-9 text-muted-foreground hover:text-card-foreground hover:bg-muted rounded-lg transition-all duration-200 hover:shadow-sm"
+                     title="{% trans 'View Details' %}"
+                     aria-label="{% trans 'View Details' %}">
+                    <i class="fa fa-eye text-sm"></i>
+                  </a>
+                  {% if fpo.verification_status != "approved" %}
+                    <form method="post" action="{% url 'fpo:review_verification' fpo.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="decision" value="approve">
+                      <button type="submit"
+                              class="inline-flex items-center justify-center w-9 h-9 text-muted-foreground hover:text-green-700 hover:bg-green-500/10 rounded-lg transition-all duration-200 hover:shadow-sm"
+                              title="{% trans 'Approve FPO' %}"
+                              aria-label="{% trans 'Approve FPO' %}"
+                              onclick="return confirm('{% trans 'Approve this FPO?' %}')">
+                        <i class="fa fa-check text-sm"></i>
+                      </button>
+                    </form>
+                    <button type="button"
+                            class="inline-flex items-center justify-center w-9 h-9 text-muted-foreground hover:text-red-700 hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:shadow-sm"
+                            title="{% trans 'Reject FPO' %}"
+                            aria-label="{% trans 'Reject FPO' %}"
+                            onclick="document.getElementById('reject-fpo-{{ fpo.pk }}').showModal()">
+                      <i class="fa fa-times text-sm"></i>
+                    </button>
+
+                    <dialog class="verification-dialog" id="reject-fpo-{{ fpo.pk }}"
+                            aria-labelledby="reject-title-{{ fpo.pk }}"
+                            aria-describedby="reject-description-{{ fpo.pk }}">
+                      <form method="post" action="{% url 'fpo:review_verification' fpo.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="decision" value="reject">
+                        <header class="flex items-start justify-between gap-4 p-6 border-b border-border">
+                          <div>
+                            <h3 id="reject-title-{{ fpo.pk }}" class="text-lg font-semibold text-card-foreground">{% trans "Reject FPO" %}</h3>
+                            <p id="reject-description-{{ fpo.pk }}" class="mt-1 text-sm text-muted-foreground">{{ fpo.name }}</p>
+                          </div>
+                          <button type="button" class="inline-flex items-center justify-center w-9 h-9 text-muted-foreground hover:text-card-foreground hover:bg-muted rounded-lg" onclick="this.closest('dialog').close()" aria-label="{% trans 'Close' %}">
+                            <i class="fa fa-times text-sm"></i>
+                          </button>
+                        </header>
+                        <div class="verification-dialog-body p-6">
+                          <label for="notes-{{ fpo.pk }}" class="block mb-2 text-sm font-medium text-card-foreground">{% trans "Reason for rejection" %}</label>
+                          <textarea id="notes-{{ fpo.pk }}" name="notes" rows="5" required class="form-control" placeholder="{% trans 'Explain why this FPO is being rejected...' %}"></textarea>
+                        </div>
+                        <footer class="flex justify-end gap-2 px-6 py-4 border-t border-border bg-muted/5">
+                          <button type="button" class="inline-flex items-center px-4 py-2 border border-border rounded-lg text-sm font-medium text-card-foreground bg-background hover:bg-accent transition-colors" onclick="this.closest('dialog').close()">{% trans "Cancel" %}</button>
+                          <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-500/20 rounded-lg text-sm font-medium text-red-700 bg-red-500/10 hover:bg-red-500/20 transition-colors">{% trans "Reject FPO" %}</button>
+                        </footer>
+                      </form>
+                    </dialog>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-6 py-20 text-center">
+                <div class="max-w-md mx-auto space-y-6">
+                  <div class="mx-auto w-20 h-20 bg-gradient-to-br from-muted to-muted/50 rounded-2xl flex items-center justify-center shadow-inner">
+                    <i class="fa fa-check-circle text-2xl text-green-600"></i>
+                  </div>
+                  <div class="space-y-2">
+                    <h3 class="text-xl font-bold text-card-foreground">
+                      {% if selected_status == "pending" %}{% trans "All caught up" %}{% else %}{% trans "No FPOs match this view" %}{% endif %}
+                    </h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                      {% if selected_status == "pending" %}{% trans "There are no signup registrations waiting for review." %}{% else %}{% trans "Try another status or clear your search." %}{% endif %}
+                    </p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <div class="bg-gradient-to-r from-muted/10 to-muted/5 px-6 py-5 border-t border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-primary"></div>
+            <p class="text-sm text-muted-foreground">
+              {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=page_obj.paginator.count %}Displaying <span class="font-semibold text-card-foreground">{{ start }}-{{ end }}</span> of <span class="font-semibold text-card-foreground">{{ total }}</span> total FPOs{% endblocktrans %}
+            </p>
+          </div>
+          <nav class="flex items-center gap-2" aria-label="{% trans 'Pagination' %}">
+            {% if page_obj.has_previous %}
+              <a href="?status={{ selected_status }}&amp;search={{ search_query|urlencode }}&amp;page={{ page_obj.previous_page_number }}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-border bg-background hover:bg-muted transition-all duration-200">
+                <i class="fa fa-chevron-left text-xs text-muted-foreground"></i>
+              </a>
+            {% endif %}
+            <span class="px-3 text-sm font-medium text-card-foreground">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+              <a href="?status={{ selected_status }}&amp;search={{ search_query|urlencode }}&amp;page={{ page_obj.next_page_number }}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-border bg-background hover:bg-muted transition-all duration-200">
+                <i class="fa fa-chevron-right text-xs text-muted-foreground"></i>
+              </a>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

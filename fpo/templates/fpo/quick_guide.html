@@ -1,0 +1,97 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block title %}FPO Intelligence - Quick Guide{% endblock %}
+{% block meta_description %}How the FPO rating platform calculates scores{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block page_title_block %}
+  <p class="fpo-eyebrow">{% trans "Getting Started" %}</p>
+  <h1 class="fpo-page-title">{% trans "Quick Guide - how this tool scores an FPO" %}</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+  <p class="fpo-page-subtitle max-w-4xl">{% trans "A short reference for anyone new to the platform: how the score is built, what sits inside each theme, and why weights shift with an FPO's age." %}</p>
+{% endblock %}
+
+{% block main_content %}
+  <div class="space-y-5">
+    <section class="fpo-panel p-5 sm:p-7">
+      <p class="fpo-guide-section-label">1 · {% trans "Layout of the tool" %}</p>
+
+      <div class="mt-5 text-center">
+        <span class="inline-flex rounded-lg bg-[#163a68] px-6 py-3 font-semibold text-white">{% trans "Final score" %}</span>
+        <div class="mx-auto h-7 w-px bg-slate-300"></div>
+      </div>
+
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <h2 class="bg-[#2f5ed1] px-4 py-3 text-center text-sm font-semibold text-white">{% trans "Governance" %}</h2>
+          <div class="p-4 text-sm text-slate-600">{% trans "Size of the FPO · Quality of Board · Quality of CEO" %}</div>
+          <div class="border-t border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">{% trans "Structures and practices guiding leadership, strategy and accountability." %}</div>
+        </article>
+        <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <h2 class="bg-[#2f5ed1] px-4 py-3 text-center text-sm font-semibold text-white">{% trans "Process" %}</h2>
+          <div class="p-4 text-sm text-slate-600">{% trans "Accounts and MIS · Credit record · Statutory filing" %}</div>
+          <div class="border-t border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">{% trans "Regular process and due diligence ensuring efficient working of the FPO." %}</div>
+        </article>
+        <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <h2 class="bg-[#2f5ed1] px-4 py-3 text-center text-sm font-semibold text-white">{% trans "Business" %}</h2>
+          <div class="p-4 text-sm text-slate-600">{% trans "Type of FPO · Institutional buying · Facilities to farmers" %}</div>
+          <div class="border-t border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">{% trans "Daily activities ensuring efficient production and service delivery." %}</div>
+        </article>
+        <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <h2 class="bg-[#2f5ed1] px-4 py-3 text-center text-sm font-semibold text-white">{% trans "Financial Performance" %}</h2>
+          <div class="p-4 text-sm text-slate-600">{% trans "Revenue per member · Net profit margin · Cash dealings" %}</div>
+          <div class="border-t border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">{% trans "Financial health, including revenue, liquidity and profitability of the FPO." %}</div>
+        </article>
+      </div>
+
+      <div class="mt-4 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+        <strong>{% trans "Plus:" %}</strong> {% trans "a set of non-evaluative questions captures whether sustainable or eco-friendly practices are present at the FPO or farmer level - tracked, but not scored." %}
+      </div>
+    </section>
+
+    <div class="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
+      <section class="fpo-panel p-5 sm:p-7">
+        <p class="fpo-guide-section-label">2 · {% trans "Scoring mechanism" %}</p>
+        <ol class="mt-5 space-y-4">
+          <li class="flex gap-3 text-sm text-slate-600"><span class="grid h-6 w-6 flex-none place-items-center rounded-full bg-[#163a68] text-xs font-semibold text-white">1</span><span>{% trans "Each indicator within a theme is scored individually." %}</span></li>
+          <li class="flex gap-3 text-sm text-slate-600"><span class="grid h-6 w-6 flex-none place-items-center rounded-full bg-[#163a68] text-xs font-semibold text-white">2</span><span>{% trans "Indicator scores are summed to arrive at each thematic score: Governance, Process, Business and Financial." %}</span></li>
+          <li class="flex gap-3 text-sm text-slate-600"><span class="grid h-6 w-6 flex-none place-items-center rounded-full bg-[#163a68] text-xs font-semibold text-white">3</span><span>{% trans "A weighted average of the four thematic scores is taken to arrive at the final score." %}</span></li>
+        </ol>
+      </section>
+      <aside class="rounded-xl bg-gradient-to-br from-[#163a68] to-[#0c294d] p-6 text-white shadow-lg shadow-blue-950/10">
+        <p class="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-blue-200">{% trans "Why weights shift with age" %}</p>
+        <p class="mt-4 text-sm leading-6 text-blue-50">{% trans "Weights are designed so no FPO gets an unfair age advantage. Younger FPOs are weighted more on Governance; older FPOs are weighted more on Financial Performance." %}</p>
+      </aside>
+    </div>
+
+    <section class="fpo-panel overflow-hidden">
+      <div class="p-5 sm:p-7 pb-3"><p class="fpo-guide-section-label">3 · {% trans "Relative weight of each theme, by FPO age" %}</p></div>
+      <div class="overflow-x-auto px-5 pb-5 sm:px-7 sm:pb-7">
+        <table class="fpo-data-table min-w-[680px]">
+          <thead><tr><th class="text-left">{% trans "Theme" %}</th><th>&lt;1 {% trans "year" %}</th><th>1-3 {% trans "years" %}</th><th>3-5 {% trans "years" %}</th><th>&gt;5 {% trans "years" %}</th></tr></thead>
+          <tbody>
+            <tr><td class="font-semibold text-slate-700">{% trans "Governance and Management" %}</td><td class="text-center">40%</td><td class="text-center">35%</td><td class="text-center">30%</td><td class="text-center">25%</td></tr>
+            <tr><td class="font-semibold text-slate-700">{% trans "Business and Operations" %}</td><td class="text-center">20%</td><td class="text-center">20%</td><td class="text-center">25%</td><td class="text-center">30%</td></tr>
+            <tr><td class="font-semibold text-slate-700">{% trans "Process and Systems" %}</td><td class="text-center">25%</td><td class="text-center">25%</td><td class="text-center">20%</td><td class="text-center">15%</td></tr>
+            <tr><td class="font-semibold text-slate-700">{% trans "Financial Performance" %}</td><td class="text-center">15%</td><td class="text-center">20%</td><td class="text-center">25%</td><td class="text-center">30%</td></tr>
+            <tr class="bg-slate-50"><td class="font-bold text-slate-800">{% trans "Total" %}</td><td class="text-center font-bold text-[#163a68]">100%</td><td class="text-center font-bold text-[#163a68]">100%</td><td class="text-center font-bold text-[#163a68]">100%</td><td class="text-center font-bold text-[#163a68]">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="fpo-panel p-5 sm:p-7">
+      <p class="fpo-guide-section-label">4 · {% trans "Sample indicators, by theme" %}</p>
+      <div class="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-xs text-orange-800">{% trans "These are representative indicators. The full indicator list remains in the linked scoring workbook." %}</div>
+      <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-xl border border-slate-200 bg-slate-50 p-4"><h2 class="text-sm font-semibold text-slate-800">{% trans "Governance" %}</h2><ul class="mt-3 list-disc space-y-1 pl-4 text-xs text-slate-600"><li>{% trans "Size of the FPO" %}</li><li>{% trans "Quality of Board" %}</li><li>{% trans "Quality of the CEO" %}</li></ul></article>
+        <article class="rounded-xl border border-slate-200 bg-slate-50 p-4"><h2 class="text-sm font-semibold text-slate-800">{% trans "Process" %}</h2><ul class="mt-3 list-disc space-y-1 pl-4 text-xs text-slate-600"><li>{% trans "Accounts and MIS" %}</li><li>{% trans "Credit Record" %}</li><li>{% trans "Statutory Filing" %}</li></ul></article>
+        <article class="rounded-xl border border-slate-200 bg-slate-50 p-4"><h2 class="text-sm font-semibold text-slate-800">{% trans "Business" %}</h2><ul class="mt-3 list-disc space-y-1 pl-4 text-xs text-slate-600"><li>{% trans "Type of FPO" %}</li><li>{% trans "Institutional Buying" %}</li><li>{% trans "Facilities to Farmers" %}</li></ul></article>
+        <article class="rounded-xl border border-slate-200 bg-slate-50 p-4"><h2 class="text-sm font-semibold text-slate-800">{% trans "Financial Performance" %}</h2><ul class="mt-3 list-disc space-y-1 pl-4 text-xs text-slate-600"><li>{% trans "Revenue per member" %}</li><li>{% trans "Net Profit Margin" %}</li><li>{% trans "Cash dealings" %}</li></ul></article>
+      </div>
+    </section>
+  </div>
+{% endblock %}

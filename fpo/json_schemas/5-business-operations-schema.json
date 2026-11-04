@@ -1,0 +1,78 @@
+{
+  "title": "Business and Operations",
+  "description": "Schema for FPO business and operations information",
+  "type": "object",
+  "properties": {
+    "priceVolatility": {
+      "type": "string",
+      "title": "Price Volatility",
+      "enum": [
+        "FPO dealing in highly price sensitive/volatile commodities(oil seed ,gram etc) and price risk borne by the FPO",
+        "Commodities with MSP,but price risk on FPO",
+        "Part of the commodities hedged against price risk/or non volatile commodities",
+        "Price risk covered through well defined hedging through NCDEX or other mediums or Not applicable- FPO only in lending/supplying inputs"
+      ]
+    },
+    "accessibilityPercentage": {
+      "type": "number",
+      "title": "Facilities to farmers - Accessibility (%)",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "timeliness": {
+      "type": "string",
+      "title": "Facilities to farmers - Timeliness",
+      "enum": [
+        "30 days prior to the sowing season",
+        "20 days prior to the sowing season", 
+        "15 days prior to the sowing season",
+        "7 days prior to the sowing season",
+        "Not applicable"
+      ]
+    },
+    "priceAffordability": {
+      "type": "string",
+      "title": "Facilities to farmers - Price/Affordability",
+      "enum": [
+        "Available to member farmers at 10% - 15% less than market price",
+        "Available to member farmers at 5% - 10% less than market price",
+        "Available to member farmers at 3% - 5% less than market price",
+        "Available to member farmers at 1% - 3% less than market price",
+        "Not applicable"
+      ]
+    },
+    "place": {
+      "type": "string",
+      "title": "Facilities to farmers - Place",
+      "enum": [
+        "Available within 3 KM of distance for majority of farmers",
+        "Available within 6 KM of distance for majority of farmers",
+        "Available within 10 KM of distance for majority of farmers",
+        "Not available within 10 KM of distance for majority of farmers",
+        "Not applicable"
+      ]
+    },
+    "outputCollectionDistance": {
+      "type": "string",
+      "title": "Distance of output collection centres",
+      "enum": ["Yes", "No"]
+    },
+    "electronicWeighingMachines": {"type": "string", "enum": ["Yes", "No"]},
+    "transportationFacility": {"type": "string", "enum": ["Yes", "No"]},
+    "storage": {"type": "string", "enum": ["Yes", "No"]},
+    "cleaning": {"type": "string", "enum": ["Yes", "No"]},
+    "gradingAndSorting": {"type": "string", "enum": ["Yes", "No"]},
+    "chilling": {"type": "string", "enum": ["Yes", "No"]},
+    "packaging": {"type": "string", "enum": ["Yes", "No"]},
+    "labelling": {"type": "string", "enum": ["Yes", "No"]},
+    "processing": {"type": "string", "enum": ["Yes", "No"]},
+    "qualityCheck": {"type": "string", "enum": ["Yes", "No"]},
+    "soilTestingFacility": {"type": "string", "enum": ["Yes", "No"]},
+    "customHiringCenters": {"type": "string", "enum": ["Yes", "No"]},
+    "contractFarming": {"type": "string", "enum": ["Yes", "No"]},
+    "advisoryServices": {"type": "string", "enum": ["Yes", "No"]},
+    "creditFacilities": {"type": "string", "enum": ["Yes", "No"]}
+  },
+  "required": ["priceVolatility", "timeliness", "priceAffordability", "place"],
+  "additionalProperties": false
+}

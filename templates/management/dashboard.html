@@ -1,0 +1,71 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block title %}{{ page_title }} - {{ site_config.site_name }}{% endblock %}
+
+{% block main_content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="bg-card rounded-lg border border-border p-6">
+        <h1 class="text-2xl font-bold text-card-foreground">{{ page_title }}</h1>
+        <p class="text-sm text-muted-foreground mt-1">{{ page_subtitle }}</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-card rounded-lg border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Total Users</p>
+                    <p class="text-3xl font-bold text-card-foreground mt-2">{{ user_count }}</p>
+                </div>
+                <div class="bg-primary/10 p-3 rounded-lg">
+                    <i class="fa fa-users text-2xl text-primary"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-card rounded-lg border border-border p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted-foreground">Active Users</p>
+                    <p class="text-3xl font-bold text-card-foreground mt-2">{{ active_user_count }}</p>
+                </div>
+                <div class="bg-green-500/10 p-3 rounded-lg">
+                    <i class="fa fa-user-check text-2xl text-green-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-card rounded-lg border border-border p-6">
+        <h2 class="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'management:user_list' %}" class="flex items-center gap-3 p-4 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
+                <i class="fa fa-users text-xl text-secondary-foreground"></i>
+                <div>
+                    <p class="font-medium text-secondary-foreground">Manage Users</p>
+                    <p class="text-xs text-muted-foreground">View and edit users</p>
+                </div>
+            </a>
+
+            <a href="{% url 'management:user_create' %}" class="flex items-center gap-3 p-4 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
+                <i class="fa fa-user-plus text-xl text-secondary-foreground"></i>
+                <div>
+                    <p class="font-medium text-secondary-foreground">Create User</p>
+                    <p class="text-xs text-muted-foreground">Add a new user</p>
+                </div>
+            </a>
+
+            <a href="{% url 'management:settings' %}" class="flex items-center gap-3 p-4 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
+                <i class="fa fa-cog text-xl text-secondary-foreground"></i>
+                <div>
+                    <p class="font-medium text-secondary-foreground">Settings</p>
+                    <p class="text-xs text-muted-foreground">System configuration</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

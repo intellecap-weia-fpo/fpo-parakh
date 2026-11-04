@@ -1,0 +1,139 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block page_title_block %}
+<h1 class="text-2xl sm:text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+    {% trans "Create New FPO" %}
+</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="mt-2 text-muted-foreground">{% trans "Register a new Farmer Producer Organization" %}</p>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+    <a href="{% url 'fpo:fpos_list' %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-arrow-left w-4 h-4 mr-2"></i>
+        {% trans "Back to FPOs" %}
+    </a>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto">
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Basic Information -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Basic Information" %}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "FPO Name" %} <span class="text-destructive">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" value="{{ form_data.name|default:'' }}" 
+                           class="form-control" required
+                           placeholder="{% trans 'Enter FPO name' %}">
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "Email Address" %} <span class="text-destructive">*</span>
+                    </label>
+                    <input type="email" id="email" name="email" value="{{ form_data.email|default:'' }}" 
+                           class="form-control" required
+                           placeholder="{% trans 'Enter email address' %}">
+                </div>
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "Primary Phone" %} <span class="text-destructive">*</span>
+                    </label>
+                    <input type="tel" id="phone" name="phone" value="{{ form_data.phone|default:'' }}" 
+                           class="form-control" required
+                           placeholder="{% trans 'Enter phone number' %}">
+                </div>
+                <div>
+                    <label for="alternate_phone" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "Alternate Phone" %}
+                    </label>
+                    <input type="tel" id="alternate_phone" name="alternate_phone" value="{{ form_data.alternate_phone|default:'' }}" 
+                           class="form-control"
+                           placeholder="{% trans 'Enter alternate phone number' %}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Address Information -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Address Information" %}</h3>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="address_line_1" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "Address Line 1" %} <span class="text-destructive">*</span>
+                    </label>
+                    <input type="text" id="address_line_1" name="address_line_1" value="{{ form_data.address_line_1|default:'' }}" 
+                           class="form-control" required
+                           placeholder="{% trans 'Enter address line 1' %}">
+                </div>
+                <div>
+                    <label for="address_line_2" class="block text-sm font-medium text-card-foreground mb-2">
+                        {% trans "Address Line 2" %}
+                    </label>
+                    <input type="text" id="address_line_2" name="address_line_2" value="{{ form_data.address_line_2|default:'' }}" 
+                           class="form-control"
+                           placeholder="{% trans 'Enter address line 2 (optional)' %}">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="city" class="block text-sm font-medium text-card-foreground mb-2">
+                            {% trans "City" %} <span class="text-destructive">*</span>
+                        </label>
+                        <input type="text" id="city" name="city" value="{{ form_data.city|default:'' }}" 
+                               class="form-control" required
+                               placeholder="{% trans 'Enter city' %}">
+                    </div>
+                    <div>
+                        <label for="district" class="block text-sm font-medium text-card-foreground mb-2">
+                            {% trans "District" %} <span class="text-destructive">*</span>
+                        </label>
+                        <input type="text" id="district" name="district" value="{{ form_data.district|default:'' }}" 
+                               class="form-control" required
+                               placeholder="{% trans 'Enter district' %}">
+                    </div>
+                    <div>
+                        <label for="state" class="block text-sm font-medium text-card-foreground mb-2">
+                            {% trans "State" %} <span class="text-destructive">*</span>
+                        </label>
+                        <input type="text" id="state" name="state" value="{{ form_data.state|default:'' }}" 
+                               class="form-control" required
+                               placeholder="{% trans 'Enter state' %}">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="pincode" class="block text-sm font-medium text-card-foreground mb-2">
+                            {% trans "Pincode" %} <span class="text-destructive">*</span>
+                        </label>
+                        <input type="text" id="pincode" name="pincode" value="{{ form_data.pincode|default:'' }}" 
+                               class="form-control" required
+                               placeholder="{% trans 'Enter pincode' %}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Form Actions -->
+        <div class="flex flex-col sm:flex-row gap-3 justify-end">
+            <a href="{% url 'fpo:fpos_list' %}" class="inline-flex items-center justify-center px-6 py-3 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" class="inline-flex items-center justify-center px-6 py-3 rounded-xl shadow-sm text-sm font-medium text-primary-foreground bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+                <i class="fa fa-save w-4 h-4 mr-2"></i>
+                {% trans "Create FPO" %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

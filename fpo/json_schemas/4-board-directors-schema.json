@@ -1,0 +1,52 @@
+{
+  "title": "Profile of Board of Directors",
+  "description": "Schema for Board of Directors profile information",
+  "type": "object",
+  "properties": {
+    "numberOfDirectors": {
+      "type": "integer",
+      "title": "Number of Directors",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "meetingFrequency": {
+      "type": "string",
+      "title": "Meeting Frequency",
+      "enum": ["Once a year", "Twice a year", "Quarterly", "Monthly", "As needed"]
+    },
+    "promotingAgency": {
+      "type": "string",
+      "title": "Promoting Agency",
+      "enum": ["Yes", "No"]
+    },
+    "directorProfiles": {
+      "type": "array",
+      "title": "Director Profiles",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "education": {"type": "string", "minLength": 1, "maxLength": 500},
+          "experienceYears": {"type": "integer", "minimum": 0, "maximum": 60},
+          "typeOfExperience": {
+            "type": "string",
+            "enum": [
+              "Agricultural Cooperatives/Farmer producer organizations",
+              "Farmer-owned enterprises",
+              "Non-governmental organization / Non-profit organization focused on agricultural sector / fisheries / animal husbandry",
+              "Farm Management",
+              "Village councils",
+              "Self-help groups",
+              "Governmental departments of agricultural sector / fisheries / animal husbandry",
+              "Any other"
+            ]
+          },
+          "otherExperience": {"type": "string", "maxLength": 300}
+        },
+        "required": ["name", "education", "experienceYears", "typeOfExperience"]
+      }
+    }
+  },
+  "required": ["numberOfDirectors", "meetingFrequency", "promotingAgency", "directorProfiles"],
+  "additionalProperties": false
+}

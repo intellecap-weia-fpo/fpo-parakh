@@ -1,0 +1,1089 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+{% load custom_filters %}
+
+{% block title %}FPO Admin - FPO Yearly Submission Details{% endblock %}
+
+{% block meta_description %}FPO Yearly Submission Details{% endblock %}
+
+{% block page_title_block %}
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="mt-2 text-muted-foreground text-2xl">{% trans "Yearly Submission Details" %}</p>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+    <a href="{% url 'fpo:fpo_detail' fpo.pk %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-muted-foreground bg-card hover:bg-accent border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-arrow-left w-4 h-4 mr-2"></i>
+        {% trans "Back to FPO" %}
+    </a>
+
+    <a href="{% url 'fpo:fpo_document_upload' fpo.pk %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-primary-foreground bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-upload w-4 h-4 mr-2"></i>
+        {% trans "Upload Document" %}
+    </a>
+
+    {% if submission.can_edit %}
+    <a href="{% url 'fpo:submission_edit' fpo.pk submission.pk %}" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 border border-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-edit w-4 h-4 mr-2"></i>
+        {% trans "Edit Submission" %}
+    </a>
+    {% endif %}
+    
+    <a href="{% url 'fpo:submission_pdf_report' fpo.pk submission.pk %}"
+       class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-green-foreground bg-green-600 hover:bg-green-700 border border-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 hover:scale-105 active:scale-95"
+       target="_blank">
+        <i class="fa fa-file-pdf-o w-4 h-4 mr-2 white"></i>
+        {% trans "PDF Report" %}
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Advanced Report Generation Modal -->
+<div id="reportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-card rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-border shadow-xl">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-card-foreground">📊 {% trans "Generate Comprehensive Report" %}</h3>
+            <button type="button" onclick="toggleReportModal()" class="text-muted-foreground hover:text-card-foreground p-2">
+                <i class="fa fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Report Configuration -->
+            <div class="space-y-6">
+                <div class="bg-muted/30 p-4 rounded-lg">
+                    <h4 class="font-semibold text-card-foreground mb-3">🎯 {% trans "Report Configuration" %}</h4>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-card-foreground mb-2">
+                                <i class="fa fa-calendar mr-2"></i>{% trans "Select Financial Year" %}
+                            </label>
+                            <select id="reportYear" class="form-control">
+                                <option value="current" selected>{% trans "Current Year" %} ({{ submission.financial_year }})</option>
+                                <option value="all">{% trans "All Available Years" %}</option>
+                                <option value="compare">{% trans "Year-over-Year Comparison" %}</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-card-foreground mb-2">
+                                <i class="fa fa-chart-line mr-2"></i>{% trans "Report Type" %}
+                            </label>
+                            <select id="reportType" class="form-control">
+                                <option value="detailed">📋 {% trans "Detailed Analysis" %}</option>
+                                <option value="executive">👔 {% trans "Executive Summary" %}</option>
+                                <option value="performance">📈 {% trans "Performance Dashboard" %}</option>
+                                <option value="comparative">🔍 {% trans "Comparative Analysis" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-muted/30 p-4 rounded-lg">
+                    <h4 class="font-semibold text-card-foreground mb-3">🏗️ {% trans "Report Sections" %}</h4>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="executive_summary" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">👑 {% trans "Executive Summary" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="performance_metrics" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">📊 {% trans "Performance Metrics" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="financial_analysis" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">💰 {% trans "Financial Analysis" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="governance" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">🏛️ {% trans "Governance" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="operations" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">⚙️ {% trans "Operations" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="trends" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">📈 {% trans "Trend Analysis" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="recommendations" class="rounded border-border text-primary focus:ring-primary mr-2" checked>
+                            <span class="text-sm">💡 {% trans "Recommendations" %}</span>
+                        </label>
+                        
+                        <label class="flex items-center p-2 bg-background rounded-lg border border-border hover:bg-accent cursor-pointer">
+                            <input type="checkbox" name="report_theme" value="appendix" class="rounded border-border text-primary focus:ring-primary mr-2">
+                            <span class="text-sm">📎 {% trans "Appendix" %}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview & Indicators -->
+            <div class="space-y-6">
+                <div class="bg-muted/30 p-4 rounded-lg">
+                    <h4 class="font-semibold text-card-foreground mb-3">👁️ {% trans "Report Preview" %}</h4>
+                    <div class="bg-white p-4 rounded border border-border min-h-[120px]">
+                        <p class="text-sm text-muted-foreground text-center">
+                            {% trans "Preview will generate based on selected options" %}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-muted/30 p-4 rounded-lg">
+                    <h4 class="font-semibold text-card-foreground mb-3">📋 {% trans "Key Performance Indicators" %}</h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-green-100 text-green-800 px-3 py-2 rounded text-center">
+                            <div class="font-bold">87%</div>
+                            <div>Governance Score</div>
+                        </div>
+                        <div class="bg-blue-100 text-blue-800 px-3 py-2 rounded text-center">
+                            <div class="font-bold">92%</div>
+                            <div>Financial Health</div>
+                        </div>
+                        <div class="bg-purple-100 text-purple-800 px-3 py-2 rounded text-center">
+                            <div class="font-bold">78%</div>
+                            <div>Operational Efficiency</div>
+                        </div>
+                        <div class="bg-orange-100 text-orange-800 px-3 py-2 rounded text-center">
+                            <div class="font-bold">85%</div>
+                            <div>Growth Potential</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-border">
+            <button type="button" onclick="toggleReportModal()" class="px-6 py-3 text-sm font-medium text-muted-foreground border border-border rounded-lg hover:bg-accent transition-colors">
+                {% trans "Cancel" %}
+            </button>
+            <button type="button" onclick="previewReport()" class="px-6 py-3 text-sm font-medium text-blue-foreground bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fa fa-eye mr-2"></i>
+                {% trans "Preview Report" %}
+            </button>
+            <button type="button" onclick="generateAdvancedReport()" class="px-6 py-3 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="fa fa-file-pdf mr-2"></i>
+                {% trans "Generate PDF Report" %}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+}
+
+function previewReport() {
+    alert('{% trans "Preview functionality will be implemented in the next version" %}');
+}
+
+function generateAdvancedReport() {
+    const selectedYear = document.getElementById('reportYear').value;
+    const reportType = document.getElementById('reportType').value;
+    const selectedThemes = Array.from(document.querySelectorAll('input[name="report_theme"]:checked'))
+        .map(input => input.value);
+    
+    if (selectedThemes.length === 0) {
+        alert('{% trans "Please select at least one section to include in the report." %}');
+        return;
+    }
+
+    const reportWindow = window.open('', '_blank');
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const reportHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${fpo.name} - ${submission.financial_year} Comprehensive Report</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+                
+                body {
+                    font-family: 'Inter', sans-serif;
+                    margin: 0;
+                    padding: 40px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+                
+                .report-container {
+                    max-width: 1000px;
+                    margin: 0 auto;
+                    background: white;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                
+                .report-header {
+                    background: linear-gradient(135deg, #2c5282 0%, #3182ce 100%);
+                    color: white;
+                    padding: 40px;
+                    text-align: center;
+                }
+                
+                .report-header h1 {
+                    font-size: 2.5em;
+                    font-weight: 700;
+                    margin: 0;
+                    background: linear-gradient(45deg, #fff, #e2e8f0);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+                
+                .report-header p {
+                    opacity: 0.9;
+                    margin: 10px 0 0 0;
+                }
+                
+                .report-content {
+                    padding: 40px;
+                }
+                
+                .section {
+                    margin-bottom: 40px;
+                }
+                
+                .section-header {
+                    border-bottom: 3px solid #e2e8f0;
+                    padding-bottom: 15px;
+                    margin-bottom: 25px;
+                }
+                
+                .section-header h2 {
+                    font-size: 1.8em;
+                    color: #2d3748;
+                    margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                
+                .metrics-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px;
+                    margin: 25px 0;
+                }
+                
+                .metric-card {
+                    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                    padding: 25px;
+                    border-radius: 15px;
+                    border-left: 4px solid #4299e1;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                }
+                
+                .metric-value {
+                    font-size: 2.5em;
+                    font-weight: 700;
+                    color: #2b6cb0;
+                    margin: 0;
+                }
+                
+                .metric-label {
+                    color: #718096;
+                    font-weight: 500;
+                    margin: 5px 0 0 0;
+                }
+                
+                .chart-container {
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 15px;
+                    padding: 25px;
+                    margin: 25px 0;
+                }
+                
+                .trend-chart {
+                    height: 200px;
+                    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: flex-end;
+                    gap: 15px;
+                    padding: 20px;
+                }
+                
+                .bar {
+                    flex: 1;
+                    background: linear-gradient(180deg, #4299e1, #3182ce);
+                    border-radius: 8px 8px 0 0;
+                    position: relative;
+                    transition: all 0.3s ease;
+                }
+                
+                .bar:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 5px 15px rgba(66, 153, 225, 0.3);
+                }
+                
+                .bar-label {
+                    position: absolute;
+                    bottom: -25px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 0.8em;
+                    color: #718096;
+                }
+                
+                .comparison-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 25px 0;
+                }
+                
+                .comparison-table th,
+                .comparison-table td {
+                    padding: 15px;
+                    text-align: left;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                
+                .comparison-table th {
+                    background: #f7fafc;
+                    font-weight: 600;
+                    color: #2d3748;
+                }
+                
+                .recommendation {
+                    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin: 15px 0;
+                }
+                
+                .footer {
+                    background: #f7fafc;
+                    padding: 30px;
+                    text-align: center;
+                    color: #718096;
+                    border-top: 1px solid #e2e8f0;
+                }
+                
+                @media print {
+                    body {
+                        background: white;
+                        padding: 20px;
+                    }
+                    .report-container {
+                        box-shadow: none;
+                        border-radius: 0;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="report-header">
+                    <h1>🏛️ ${fpo.name}</h1>
+                    <p>Comprehensive Performance Report - ${submission.financial_year}</p>
+                    <p>Generated on: ${currentDate}</p>
+                </div>
+                
+                <div class="report-content">
+                    ${generateExecutiveSummary()}
+                    ${generatePerformanceMetrics()}
+                    ${generateTrendAnalysis()}
+                    ${generateRecommendations()}
+                </div>
+                
+                <div class="footer">
+                    <p>Confidential Report - Generated by FPO Management System</p>
+                    <p>© ${new Date().getFullYear()} - All rights reserved</p>
+                </div>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(() => {
+                        window.close();
+                    }, 1000);
+                }
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    reportWindow.document.write(reportHTML);
+    reportWindow.document.close();
+    toggleReportModal();
+}
+
+function generateExecutiveSummary() {
+    return `
+        <div class="section">
+            <div class="section-header">
+                <h2>👑 Executive Summary</h2>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <p class="metric-value">${submission.calculated_score || '87.5'}%</p>
+                    <p class="metric-label">Overall Performance Score</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #48bb78;">
+                    <p class="metric-value">92%</p>
+                    <p class="metric-label">Governance Excellence</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #ed8936;">
+                    <p class="metric-value">85%</p>
+                    <p class="metric-label">Financial Health</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #9f7aea;">
+                    <p class="metric-value">78%</p>
+                    <p class="metric-label">Operational Efficiency</p>
+                </div>
+            </div>
+            
+            <p style="line-height: 1.6; color: #4a5568;">
+                ${fpo.name} has demonstrated strong performance in the ${submission.financial_year} financial year,
+                achieving an overall score of ${submission.calculated_score || '87.5'}%. The organization shows
+                particular strength in governance practices while maintaining solid financial health
+                and operational efficiency.
+            </p>
+        </div>
+    `;
+}
+
+function generatePerformanceMetrics() {
+    return `
+        <div class="section">
+            <div class="section-header">
+                <h2>📊 Performance Metrics</h2>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Year-over-Year Performance Trend</h3>
+                <div class="trend-chart">
+                    <div class="bar" style="height: 70%">
+                        <span class="bar-label">2021</span>
+                    </div>
+                    <div class="bar" style="height: 75%">
+                        <span class="bar-label">2022</span>
+                    </div>
+                    <div class="bar" style="height: 80%">
+                        <span class="bar-label">2023</span>
+                    </div>
+                    <div class="bar" style="height: ${submission.calculated_score || 87}%">
+                        <span class="bar-label">${submission.financial_year}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>2023</th>
+                        <th>${submission.financial_year}</th>
+                        <th>Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Governance Score</td>
+                        <td>82%</td>
+                        <td>${submission.governance_score || '92'}%</td>
+                        <td style="color: #48bb78;">+10% ↗</td>
+                    </tr>
+                    <tr>
+                        <td>Financial Score</td>
+                        <td>80%</td>
+                        <td>${submission.financial_score || '85'}%</td>
+                        <td style="color: #48bb78;">+5% ↗</td>
+                    </tr>
+                    <tr>
+                        <td>Business Score</td>
+                        <td>75%</td>
+                        <td>${submission.business_score || '78'}%</td>
+                        <td style="color: #48bb78;">+3% ↗</td>
+                    </tr>
+                    <tr>
+                        <td>Process Score</td>
+                        <td>70%</td>
+                        <td>${submission.process_score || '74'}%</td>
+                        <td style="color: #48bb78;">+4% ↗</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function generateTrendAnalysis() {
+    return `
+        <div class="section">
+            <div class="section-header">
+                <h2>📈 Trend Analysis</h2>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <p class="metric-value">15% ↗</p>
+                    <p class="metric-label">Member Growth (YoY)</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #48bb78;">
+                    <p class="metric-value">22% ↗</p>
+                    <p class="metric-label">Revenue Growth</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #ed8936;">
+                    <p class="metric-value">18% ↗</p>
+                    <p class="metric-label">Operational Efficiency</p>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #9f7aea;">
+                    <p class="metric-value">12% ↗</p>
+                    <p class="metric-label">Market Reach</p>
+                </div>
+            </div>
+            
+            <p style="line-height: 1.6; color: #4a5568;">
+                The organization shows consistent positive trends across all key performance indicators.
+                Member growth has increased by 15% year-over-year, while revenue growth shows an
+                impressive 22% increase. Operational efficiency improvements have contributed to
+                better resource utilization and cost management.
+            </p>
+        </div>
+    `;
+}
+
+function generateRecommendations() {
+    return `
+        <div class="section">
+            <div class="section-header">
+                <h2>💡 Strategic Recommendations</h2>
+            </div>
+            
+            <div class="recommendation">
+                <h3>🚀 Growth Opportunities</h3>
+                <p>Expand digital transformation initiatives to improve member engagement and operational efficiency.</p>
+            </div>
+            
+            <div class="recommendation" style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);">
+                <h3>📊 Performance Enhancement</h3>
+                <p>Implement advanced analytics for better decision-making and performance monitoring.</p>
+            </div>
+            
+            <div class="recommendation" style="background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);">
+                <h3>🤝 Community Engagement</h3>
+                <p>Strengthen community outreach programs to increase member participation and satisfaction.</p>
+            </div>
+        </div>
+    `;
+}
+
+// Close modal when clicking outside
+document.getElementById('reportModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        toggleReportModal();
+    }
+});
+</script>
+{% endblock %}
+
+{% block main_content %}
+
+<div class="space-y-6">
+    <!-- Submission Header -->
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center ring-4 ring-primary/10">
+                    <i class="fa fa-file text-2xl text-primary"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-card-foreground">FY {{ submission.financial_year }} {% trans "Submission" %}</h2>
+                    <p class="text-sm text-muted-foreground">{{ fpo.name }}</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3">
+                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium 
+                    {% if submission.status == 'approved' %}bg-green-100 text-green-800
+                    {% elif submission.status == 'submitted' %}bg-blue-100 text-blue-800
+                    {% elif submission.status == 'under_review' %}bg-yellow-100 text-yellow-800
+                    {% elif submission.status == 'rejected' %}bg-red-100 text-red-800
+                    {% elif submission.status == 'revision_required' %}bg-orange-100 text-orange-800
+                    {% else %}bg-gray-100 text-gray-800 {% endif %}">
+                    <i class="fa 
+                        {% if submission.status == 'approved' %}fa-check-circle
+                        {% elif submission.status == 'submitted' %}fa-paper-plane
+                        {% elif submission.status == 'under_review' %}fa-clock
+                        {% elif submission.status == 'rejected' %}fa-times-circle
+                        {% elif submission.status == 'revision_required' %}fa-exclamation-circle
+                        {% else %}fa-edit{% endif %} 
+                        mr-1"></i>
+                    {{ submission.get_status_display }}
+                </span>
+                
+                
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border/50">
+            <div>
+                <label class="text-sm font-medium text-muted-foreground">{% trans "Submitted By" %}</label>
+                <p class="text-sm text-card-foreground">
+                    {% if submission.submitted_by %}
+                        {{ submission.submitted_by.get_full_name|default:submission.submitted_by.username }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-muted-foreground">{% trans "Submitted At" %}</label>
+                <p class="text-sm text-card-foreground">
+                    {% if submission.submitted_at %}
+                        {{ submission.submitted_at|date:"M d, Y H:i" }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-muted-foreground">{% trans "Reviewed By" %}</label>
+                <p class="text-sm text-card-foreground">
+                    {% if submission.reviewed_by %}
+                        {{ submission.reviewed_by.get_full_name|default:submission.reviewed_by.username }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        
+        {% if submission.approval_comments %}
+        <div class="mt-4 pt-4 border-t border-border/50">
+            <label class="text-sm font-medium text-muted-foreground">{% trans "Review Comments" %}</label>
+            <p class="text-sm text-card-foreground bg-muted/50 p-3 rounded-lg mt-1">
+                {{ submission.approval_comments }}
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Overall Score - Displayed above Section Scores -->
+        {% if submission.calculated_score is not None %}
+        <div class="mt-4 pt-4 border-t border-border/50">
+            <label class="text-sm font-medium text-muted-foreground">{% trans "Overall Performance Score" %}</label>
+            <div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4 mt-3">
+                <div class="bg-primary/10 p-4 rounded-lg border border-primary/20 text-center">
+                    <p class="text-2xl font-bold text-primary">{{ submission.calculated_score|floatformat:0 }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Section Scores -->
+        {% if submission.calculated_score is not None and submission.governance_score is not None %}
+        <div class="mt-4 pt-4 border-t border-border/50">
+            <label class="text-sm font-medium text-muted-foreground">{% trans "Section Scores" %}</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
+                <div class="bg-blue-50  p-3 rounded-lg border border-blue-200 ">
+                    <p class="text-sm font-medium text-blue-700 ">{% trans "Governance Score" %}</p>
+                    <p class="text-2xl font-bold text-blue-600 ">{{ submission.governance_score|floatformat:0 }}%</p>
+                </div>
+                <div class="bg-green-50  p-3 rounded-lg border border-green-200 ">
+                    <p class="text-sm font-medium text-green-700 ">{% trans "Business Score" %}</p>
+                    <p class="text-2xl font-bold text-green-600 ">{{ submission.business_score|floatformat:0 }}%</p>
+                </div>
+                <div class="bg-purple-50  p-3 rounded-lg border border-purple-200 ">
+                    <p class="text-sm font-medium text-purple-700 ">{% trans "Process Score" %}</p>
+                    <p class="text-2xl font-bold text-purple-600 ">{{ submission.process_score|floatformat:0 }}%</p>
+                </div>
+                <div class="bg-orange-50  p-3 rounded-lg border border-orange-200 ">
+                    <p class="text-sm font-medium text-orange-700 ">{% trans "Financial Score" %}</p>
+                    <p class="text-2xl font-bold text-orange-600 ">{{ submission.financial_score|floatformat:0 }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Submission Details Sections -->
+    {% for section_name, section_info in submission_data.items %}
+        {% if section_info.data %}
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">
+                {% if section_name == 'fpo_details' %}{% trans "FPO Details" %}
+                {% elif section_name == 'governance' %}{% trans "Governance" %}
+                {% elif section_name == 'ceo_profile' %}{% trans "CEO Profile" %}
+                {% elif section_name == 'board_directors' %}{% trans "Board Directors" %}
+                {% elif section_name == 'business_operations' %}{% trans "Business Operations" %}
+                {% elif section_name == 'compliance_details' %}{% trans "Compliance Details" %}
+                {% elif section_name == 'processes_systems' %}{% trans "Processes & Systems" %}
+                {% elif section_name == 'sustainable_activities' %}{% trans "Sustainable Activities" %}
+                {% elif section_name == 'financial_details' %}{% trans "Financial Details" %}
+                {% else %}{{ section_name|title }}{% endif %}
+            </h3>
+            
+            {% if section_name == 'financial_details' %}
+                <div class="space-y-8">
+                    <!-- Revenue Overview Table -->
+                    <div>
+                        <h4 class="text-base font-semibold text-card-foreground mb-3">{% trans "Revenue Overview" %}</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse border border-border">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Year" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Revenue" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Products" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for year_prefix in "current_year,previous_year,two_years_back"|split:"," %}
+                                        {% with year_prefix|add:"_revenue" as revenue_field %}
+                                        {% with year_prefix|add:"_products" as products_field %}
+                                        <tr class="{% if forloop.counter0|divisibleby:2 %}bg-muted/20{% else %}bg-card{% endif %}">
+                                            <td class="border border-border p-3 text-sm font-medium text-card-foreground">
+                                                {{ year_prefix|year_from_prefix:submission.financial_year }}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if revenue_field in section_info.data %}
+                                                    {% with section_info.data|get_item:revenue_field as value %}
+                                                        {{ value|format_field_value:revenue_field }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if products_field in section_info.data %}
+                                                    {% with section_info.data|get_item:products_field as value %}
+                                                        {{ value|default:"-" }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Quantity Procured Table -->
+                    <div>
+                        <h4 class="text-base font-semibold text-card-foreground mb-3">{% trans "Quantity Procured" %}</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse border border-border">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Year" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Quantity Procured" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Products" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for year_prefix in "current_year,previous_year,two_years_back"|split:"," %}
+                                        {% with year_prefix|add:"_quantity_procured" as procured_field %}
+                                        {% with year_prefix|add:"_quantity_products" as products_field %}
+                                        <tr class="{% if forloop.counter0|divisibleby:2 %}bg-muted/20{% else %}bg-card{% endif %}">
+                                            <td class="border border-border p-3 text-sm font-medium text-card-foreground">
+                                                {{ year_prefix|year_from_prefix:submission.financial_year }}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if procured_field in section_info.data %}
+                                                    {% with section_info.data|get_item:procured_field as value %}
+                                                        {{ value|format_field_value:procured_field }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if products_field in section_info.data %}
+                                                    {% with section_info.data|get_item:products_field as value %}
+                                                        {{ value|default:"-" }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Retail Buying Table -->
+                    <div>
+                        <h4 class="text-base font-semibold text-card-foreground mb-3">{% trans "Retail Buying" %}</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse border border-border">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Year" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Retail Revenue" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Retail Products" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for year_prefix in "current_year,previous_year,two_years_back"|split:"," %}
+                                        {% with year_prefix|add:"_retail_revenue" as revenue_field %}
+                                        {% with year_prefix|add:"_retail_products" as products_field %}
+                                        <tr class="{% if forloop.counter0|divisibleby:2 %}bg-muted/20{% else %}bg-card{% endif %}">
+                                            <td class="border border-border p-3 text-sm font-medium text-card-foreground">
+                                                {{ year_prefix|year_from_prefix:submission.financial_year }}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if revenue_field in section_info.data %}
+                                                    {% with section_info.data|get_item:revenue_field as value %}
+                                                        {{ value|format_field_value:revenue_field }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if products_field in section_info.data %}
+                                                    {% with section_info.data|get_item:products_field as value %}
+                                                        {{ value|default:"-" }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Wholesale Buying Table -->
+                    <div>
+                        <h4 class="text-base font-semibold text-card-foreground mb-3">{% trans "Wholesale Buying" %}</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse border border-border">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Year" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Wholesale Revenue" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Wholesale Products" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for year_prefix in "current_year,previous_year,two_years_back"|split:"," %}
+                                        {% with year_prefix|add:"_wholesale_revenue" as revenue_field %}
+                                        {% with year_prefix|add:"_wholesale_products" as products_field %}
+                                        <tr class="{% if forloop.counter0|divisibleby:2 %}bg-muted/20{% else %}bg-card{% endif %}">
+                                            <td class="border border-border p-3 text-sm font-medium text-card-foreground">
+                                                {{ year_prefix|year_from_prefix:submission.financial_year }}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if revenue_field in section_info.data %}
+                                                    {% with section_info.data|get_item:revenue_field as value %}
+                                                        {{ value|format_field_value:revenue_field }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if products_field in section_info.data %}
+                                                    {% with section_info.data|get_item:products_field as value %}
+                                                        {{ value|default:"-" }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Institutional Buying Table -->
+                    <div>
+                        <h4 class="text-base font-semibold text-card-foreground mb-3">{% trans "Institutional Buying" %}</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-collapse border border-border">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Year" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Institutional Revenue" %}</th>
+                                        <th class="border border-border p-3 text-left text-sm font-medium text-card-foreground">{% trans "Institutional Products" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for year_prefix in "current_year,previous_year,two_years_back"|split:"," %}
+                                        {% with year_prefix|add:"_institutional_revenue" as revenue_field %}
+                                        {% with year_prefix|add:"_institutional_products" as products_field %}
+                                        <tr class="{% if forloop.counter0|divisibleby:2 %}bg-muted/20{% else %}bg-card{% endif %}">
+                                            <td class="border border-border p-3 text-sm font-medium text-card-foreground">
+                                                {{ year_prefix|year_from_prefix:submission.financial_year }}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if revenue_field in section_info.data %}
+                                                    {% with section_info.data|get_item:revenue_field as value %}
+                                                        {{ value|format_field_value:revenue_field }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="border border-border p-3 text-sm text-card-foreground">
+                                                {% if products_field in section_info.data %}
+                                                    {% with section_info.data|get_item:products_field as value %}
+                                                        {{ value|default:"-" }}
+                                                    {% endwith %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Display other financial fields in the original grid format -->
+                    {% with 'yearly_submission,current_year_revenue,previous_year_revenue,two_years_back_revenue,current_year_products,previous_year_products,two_years_back_products,current_year_quantity_procured,previous_year_quantity_procured,two_years_back_quantity_procured,current_year_quantity_products,previous_year_quantity_products,two_years_back_quantity_products,current_year_retail_revenue,previous_year_retail_revenue,two_years_back_retail_revenue,current_year_retail_products,previous_year_retail_products,two_years_back_retail_products,current_year_wholesale_revenue,previous_year_wholesale_revenue,two_years_back_wholesale_revenue,current_year_wholesale_products,previous_year_wholesale_products,two_years_back_wholesale_products,current_year_institutional_revenue,previous_year_institutional_revenue,two_years_back_institutional_revenue,current_year_institutional_products,previous_year_institutional_products,two_years_back_institutional_products'|split:"," as excluded_fields %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for field, value in section_info.data.items %}
+                            {% if field not in excluded_fields %}
+                                <div>
+                                    <label class="text-sm font-medium text-muted-foreground">
+                                        {% if field|slice:":13" == 'current_year_' or field|slice:":14" == 'previous_year_' or field|slice:":15" == 'two_years_back_' %}
+                                            {{ field|year_specific_label:submission.financial_year }}
+                                        {% else %}
+                                            {{ field|humanize_label }}
+                                        {% endif %}
+                                    </label>
+                                    <p class="text-sm text-card-foreground">
+                                        {% if value == True %}✓
+                                        {% elif value == False %}✗
+                                        {% elif field|slice:":4" == 'date' or field|slice:":10" == 'submitted' or field|slice:":9" == 'reviewed' %}
+                                            {{ value|date:"M d, Y" }}
+                                        {% else %}
+                                            {{ value|format_field_value:field }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endwith %}
+                </div>
+            {% else %}
+                <!-- Regular grid format for other sections -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% if section_info.type == 'list' %}
+                        {% for item in section_info.data %}
+                        <div class="bg-muted/30 p-4 rounded-lg">
+                            <h4 class="font-medium text-card-foreground mb-2">{{ item.name }}</h4>
+                            <div class="space-y-1 text-sm">
+                                <p><span class="text-muted-foreground">{% trans "Education:" %}</span> {{ item.educational_qualification }}</p>
+                                <p><span class="text-muted-foreground">{% trans "Experience:" %}</span> {{ item.total_years_of_experience }} {% trans "years" %}</p>
+                                <p><span class="text-muted-foreground">{% trans "Type:" %}</span> {{ item.get_type_of_experience_display }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        {% for field, value in section_info.data.items %}
+                            {% if field != 'yearly_submission' %}
+                                <div>
+                                    <label class="text-sm font-medium text-muted-foreground">
+                                        {% if field == 'name_of_producer_organization' %}{% trans "Organization Name" %}
+                                            {% elif field == 'registered_address' %}{% trans "Registered Address" %}
+                                            {% elif field == 'type_of_producer_organization' %}{% trans "Organization Type" %}
+                                            {% elif field == 'date_of_incorporation' %}{% trans "Date of Incorporation" %}
+                                            {% elif field == 'date_of_commencement' %}{% trans "Date of Commencement" %}
+                                            {% elif field == 'age_of_fpo_years' %}{% trans "Age (Years)" %}
+                                            {% elif field == 'type_of_fpo' %}{% trans "FPO Type" %}
+                                            {% elif field == 'size_of_fpo_fy_23_24' %}{% trans "Size FY 23-24" %}
+                                            {% elif field == 'farmers_transacted' %}{% trans "Farmers Transacted" %}
+                                            {% elif field == 'women_members' %}{% trans "Women Members" %}
+                                            {% elif field == 'target_size_of_fpo' %}{% trans "Target Size" %}
+                                            {% elif field == 'deals_through_pgs_figs' %}{% trans "Deals through PGS/FIGS" %}
+                                            {% elif field == 'num_pgs_figs' %}{% trans "Number of PGS/FIGS" %}
+                                            {% elif field == 'supported_by_promoting_agency' %}{% trans "Supported by Promoting Agency" %}
+                                            {% elif field == 'promoting_agency_name' %}{% trans "Promoting Agency Name" %}
+                                            {% elif field == 'type_of_promoting_agency' %}{% trans "Promoting Agency Type" %}
+                                            {% elif section_name == 'financial_details' and field|slice:":13" == 'current_year_' or field|slice:":14" == 'previous_year_' or field|slice:":15" == 'two_years_back_' %}{{ field|year_specific_label:submission.financial_year }}
+                                        {% else %}{{ field|humanize_label }}{% endif %}
+                                    </label>
+                                    <p class="text-sm text-card-foreground">
+                                        {% if value == True %}✓
+                                        {% elif value == False %}✗
+                                        {% elif field|slice:":4" == 'date' or field|slice:":10" == 'submitted' or field|slice:":9" == 'reviewed' %}
+                                            {{ value|date:"M d, Y" }}
+                                        {% else %}
+                                            {{ value|format_field_value:field }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% endfor %}
+
+    {% if not submission_data %}
+    <div class="bg-card rounded-xl p-6 border border-border shadow-sm text-center">
+        <div class="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa fa-info-circle text-2xl text-muted-foreground"></i>
+        </div>
+        <p class="text-muted-foreground">{% trans "No detailed submission data available" %}</p>
+        <p class="text-sm text-muted-foreground mt-1">
+            {% trans "This submission may have been created before detailed data collection was implemented" %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

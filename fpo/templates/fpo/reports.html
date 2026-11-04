@@ -1,0 +1,138 @@
+{% extends "base_app.html" %}
+{% load i18n %}
+
+{% block page_title_block %}
+<h1 class="text-2xl sm:text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+    {% trans "Reports" %}
+</h1>
+{% endblock %}
+
+{% block page_subtitle_block %}
+<p class="mt-2 text-muted-foreground">{% trans "Generate and view FPO reports and analytics" %}</p>
+{% endblock %}
+
+{% block page_actions %}
+<div class="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+    <a href="#" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-primary-foreground bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-all duration-200 hover:scale-105 active:scale-95">
+        <i class="fa fa-plus w-4 h-4 mr-2"></i>
+        {% trans "Generate Report" %}
+    </a>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<div class="space-y-6">
+    <!-- FPO KPIs -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total FPOs -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <div class="flex items-center">
+                <div class="p-3 rounded-lg bg-primary/10">
+                    <i class="fa fa-leaf text-2xl text-primary"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-muted-foreground">{% trans "Total FPOs" %}</p>
+                    <p class="text-2xl font-bold text-card-foreground">{{ total_fpos }}</p>
+                    <p class="text-sm {% if growth_rate > 0 %}text-green-600{% elif growth_rate < 0 %}text-red-600{% else %}text-muted-foreground{% endif %}">
+                        {% if growth_rate > 0 %}+{% endif %}{{ growth_rate }}% {% trans "from last month" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Members -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <div class="flex items-center">
+                <div class="p-3 rounded-lg bg-blue-100">
+                    <i class="fa fa-users text-2xl text-blue-600"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-muted-foreground">{% trans "Total Members" %}</p>
+                    <p class="text-2xl font-bold text-card-foreground">{{ total_members }}</p>
+                    <p class="text-sm text-blue-600">
+                        {% if total_fpos > 0 %}{{ total_members|floatformat:0 }}{% else %}0{% endif %} {% trans "avg per FPO" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activities This Month -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <div class="flex items-center">
+                <div class="p-3 rounded-lg bg-purple-100">
+                    <i class="fa fa-calendar text-2xl text-purple-600"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-muted-foreground">{% trans "Activities This Month" %}</p>
+                    <p class="text-2xl font-bold text-card-foreground">{{ activities_this_month }}</p>
+                    <p class="text-sm text-purple-600">
+                        {% if activities_this_month > 0 %}{{ activities_this_month|floatformat:0 }}{% else %}0{% endif %} {% trans "per week" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional KPIs -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Registration Growth -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Registration Growth" %}</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "This Month" %}</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ fpos_this_month }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Last Month" %}</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ fpos_last_month }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Growth Rate" %}</span>
+                    <span class="text-sm font-medium {% if growth_rate > 0 %}text-green-600{% elif growth_rate < 0 %}text-red-600{% else %}text-muted-foreground{% endif %}">
+                        {% if growth_rate > 0 %}+{% endif %}{{ growth_rate }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Member Distribution -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Member Distribution" %}</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Small FPOs" %} (1-10)</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ small_fpos }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Medium FPOs" %} (11-50)</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ medium_fpos }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Large FPOs" %} (50+)</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ large_fpos }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Summary -->
+        <div class="bg-card rounded-xl p-6 border border-border shadow-sm">
+            <h3 class="text-lg font-semibold text-card-foreground mb-4">{% trans "Activity Summary" %}</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Total Activities" %}</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ total_activities }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Avg per FPO" %}</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ avg_activities_per_fpo|floatformat:1 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">{% trans "Most Active FPO" %}</span>
+                    <span class="text-sm font-medium text-card-foreground">{{ most_active_fpo }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
