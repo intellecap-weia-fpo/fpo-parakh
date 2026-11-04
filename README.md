@@ -50,7 +50,7 @@ This repository contains no real FPO data, credentials or map boundary files. Ea
 | Service | Used for | Required? | Open alternative |
 |---|---|---|---|
 | Any OpenAI-compatible LLM endpoint (`OPENAI_API_BASE_URL`, `OPENAI_API_KEY`) | Document pre-fill | No | A self-hosted server such as Ollama or vLLM |
-| Mapbox GL JS (`MAPBOX_ACCESS_TOKEN`) | Reports map | No, but the reports map needs it today | None configured yet |
+| OpenStreetMap tiles, drawn with MapLibre GL | Reports map | No, and both are open | Set `MAP_STYLE_URL` to any MapLibre-compatible style, including a self-hosted one |
 
 Set `DEBUG=True` in `.env` for local development; outside DEBUG the app will not start without `SECRET_KEY`.
 
@@ -68,7 +68,7 @@ Use Django's management commands through `uv run python manage.py`. For example,
 
 ## Community
 
-See the [privacy notice](PRIVACY.md), [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) and the [content policy](docs/content-policy.md).
+See the [overview](docs/overview.md), [privacy notice](PRIVACY.md), [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) and the [content policy](docs/content-policy.md).
 
 ## Copyright and licence
 

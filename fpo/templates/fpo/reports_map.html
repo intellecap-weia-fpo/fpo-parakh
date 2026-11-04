@@ -9,8 +9,8 @@
 {% block body_class %}bg-background text-foreground min-h-screen{% endblock %}
 
 {% block extra_head %}
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.js" data-turbo-track="reload"></script>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" data-turbo-track="reload"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js" data-turbo-track="reload"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,11 +131,11 @@
     color: var(--primary-brand);
   }
 
-  .mapboxgl-ctrl-bottom-right {
+  .maplibregl-ctrl-bottom-right {
     display: none;
   }
 
-  .mapboxgl-ctrl-bottom-left {
+  .maplibregl-ctrl-bottom-left {
     display: none;
   }
 
@@ -205,7 +205,7 @@
 
 
   /* Custom Popup Styles */
-  .mapboxgl-popup-content {
+  .maplibregl-popup-content {
     padding: 0;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -338,7 +338,7 @@
     line-height: 1;
   }
 
-  .mapboxgl-popup-close-button {
+  .maplibregl-popup-close-button {
     font-size: 18px;
     padding: 0;
     width: 24px;
@@ -352,22 +352,22 @@
     transition: all 0.2s ease;
   }
 
-  .mapboxgl-popup-close-button:hover {
+  .maplibregl-popup-close-button:hover {
     background: #f1f5f9;
     color: #1e293b;
   }
 
-  .mapboxgl-popup-tip {
+  .maplibregl-popup-tip {
     border-top-color: #f8fafc !important;
   }
 
-  /* Default Mapbox marker hover effect */
-  .mapboxgl-marker {
+  /* Default marker hover effect */
+  .maplibregl-marker {
     cursor: pointer;
     transition: transform 0.2s ease;
   }
 
-  .mapboxgl-marker:hover {
+  .maplibregl-marker:hover {
     transform: scale(1.1);
   }
 
@@ -925,29 +925,43 @@
   let totalAgenciesCount = 0;
   let currentState = null;
 
-  // Wait for mapboxgl to be loaded before initializing
+  // Wait for maplibregl to be loaded before initializing
   function initializeMap() {
-    // Check if mapboxgl is available
-    if (typeof mapboxgl === 'undefined') {
-      console.log('Waiting for mapboxgl to load...');
+    // Check if maplibregl is available
+    if (typeof maplibregl === 'undefined') {
+      console.log('Waiting for maplibregl to load...');
       setTimeout(initializeMap, 100);
       return;
     }
 
-    // Initialize Mapbox map
-    mapboxgl.accessToken = '{{ mapbox_token }}';
+    // Open map stack: MapLibre GL with OpenStreetMap tiles. Set MAP_STYLE_URL
+    // to use any other MapLibre-compatible style.
+    const osmStyle = {
+      version: 8,
+      sources: {
+        osm: {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          maxzoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      },
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+    };
 
-    map = new mapboxgl.Map({
+    map = new maplibregl.Map({
       container: 'map',
+      style: '{{ map_style_url|escapejs }}' || osmStyle,
       center: [78.9629, 20.5937], // Center of India
       zoom: 4,
     });
 
     // Add navigation controls
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     // Add fullscreen control
-    map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    map.addControl(new maplibregl.FullscreenControl(), 'top-right');
 
     // Initialize on load
     map.on('load', async function() {
@@ -1192,7 +1206,7 @@
         updateViewButtonCounts();
 
         // Clear existing markers
-        document.querySelectorAll('.mapboxgl-marker').forEach(marker => marker.remove());
+        document.querySelectorAll('.maplibregl-marker').forEach(marker => marker.remove());
 
         // Add state-level count markers using geojson centroids
         Object.entries(data.states || {}).forEach(([stateName, stateData]) => {
@@ -1264,7 +1278,7 @@
             `;
 
             // Add marker and click handler
-            const marker = new mapboxgl.Marker(el)
+            const marker = new maplibregl.Marker(el)
               .setLngLat([coords[0], coords[1]])
               .addTo(map);
 

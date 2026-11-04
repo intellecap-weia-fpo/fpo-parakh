@@ -5117,7 +5117,7 @@ def reports_map(request):
         pass
 
     # Get Mapbox token from environment
-    mapbox_token = os.environ.get('MAPBOX_ACCESS_TOKEN', "")
+    map_style_url = os.environ.get('MAP_STYLE_URL', "")
 
     context = {
         'all_states': all_states,
@@ -5130,7 +5130,7 @@ def reports_map(request):
         'selected_fpo_name': selected_fpo_name,
         'total_fpos': total_fpos,
         'avg_score': avg_score,
-        'mapbox_token': mapbox_token,
+        'map_style_url': map_style_url,
     }
 
     return render(request, "fpo/reports_map.html", context)
