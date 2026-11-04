@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="FPO Parakh logo" width="160"></p>
+
 # FPO Parakh (FPO Rating Tool)
 
 FPO Parakh helps assess farmer producer organisations across governance, business operations, processes and financial performance. This repository contains the Django administration and web application for managing FPO information, verification, ratings and reports. The FPO mobile app is a separate component.
